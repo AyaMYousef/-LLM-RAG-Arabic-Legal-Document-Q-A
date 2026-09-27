@@ -1,0 +1,9 @@
+stages:
+  extract_articles:
+    cmd: python scripts/run_pipeline.py --input data/raw/egyptian_civil_code.pdf --output data/processed/civil_code_articles.json
+    deps:
+      - data/raw/egyptian_civil_code.pdf
+      - scripts/run_pipeline.py
+      - src/extraction/
+    outs:
+      - data/processed/civil_code_articles.json

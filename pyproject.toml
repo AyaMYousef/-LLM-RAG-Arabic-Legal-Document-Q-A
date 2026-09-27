@@ -14,7 +14,7 @@ authors = [
 ]
 
 dependencies = [
-    "PyMuPDF>=1.23.0",
+    "pymupdf>=1.23.0",
     "pydantic>=2.0.0",
     "arabic-reshaper>=3.0.0",
     "python-bidi>=0.4.2",
