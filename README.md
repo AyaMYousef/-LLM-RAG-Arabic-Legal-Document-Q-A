@@ -51,14 +51,25 @@ Clone the repository, create a virtual environment, and install dependencies in 
 
 ```bash
 # Clone the repository
-git clone <https://github.com/AyaMYousef/-LLM-RAG-Arabic-Legal-Document-Q-A.git>
-cd arabic-legal-rag
+git clone https://github.com/AyaMYousef/-LLM-RAG-Arabic-Legal-Document-Q-A.git
+cd -LLM-RAG-Arabic-Legal-Document-Q-A
 
-# Create and activate virtual environment
+# Create a virtual environment
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+Activate the virtual environment
 
-# Install core and dev dependencies
+Windows PowerShell:
+
+.\.venv\Scripts\Activate.ps1
+
+Windows Command Prompt:
+
+.venv\Scripts\activate.bat
+
+Linux / macOS:
+
+source .venv/bin/activate
+Install dependencies
 pip install -e ".[dev]"
 
 ```
