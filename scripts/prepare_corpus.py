@@ -19,13 +19,8 @@ ARABIC_DIGITS = str.maketrans(
 
 # Articles explicitly identified as repealed in the PDF.
 #
-# 55–80:
-#   The PDF states that Articles 55–80 are repealed.
-#
-# 389–417:
-#   The PDF states "Articles 389-417 repealed".
 REPEALED_RANGES = (
-    range(55, 81),
+    range(54, 81),
     range(389, 418),
 )
 
@@ -213,7 +208,7 @@ def detect_arabic_article(text: str) -> int | None:
     text = normalize_spaces(text)
 
     match = re.match(
-        r"^(?:مادة|ما\s+دة|م\s+ادة)\s+([٠-٩0-9]+)\b",
+        r"^(?:مادة|ما\s*دة|م\s*ادة|ماد\s*ة)\s+([٠-٩0-9][٠-٩0-9\s]*)\b",
         text,
     )
 
@@ -221,9 +216,20 @@ def detect_arabic_article(text: str) -> int | None:
         return None
 
     digits = normalize_digits(match.group(1))
-    digits = digits[::-1]
 
-    return int(digits)
+    # The PDF can split a visually reversed article number
+    # into multiple digit groups, e.g. "٠٦ ١" for Article 601.
+    # Reverse each group separately, then concatenate them.
+    groups = re.findall(r"[0-9]+", digits)
+
+    normalized_number = "".join(
+        group[::-1]
+        for group in groups
+    )
+
+    return int(normalized_number)
+
+
 
 
 def reconstruct_language_lines(
@@ -443,9 +449,25 @@ def extract_language_articles(
                     exact_candidates.append(index)
 
             elif language == "ar":
-                if detect_arabic_article(cleaned) == article_number:
-                    if len(cleaned) <= 30:
-                        exact_candidates.append(index)
+                match = re.match(
+                r"^(?:مادة|ما\s*دة|م\s*ادة|ماد\s*ة)\s+([٠-٩0-9][٠-٩0-9\s]*)\b",
+                cleaned,
+            )
+
+                if match:
+                    digits = normalize_digits(match.group(1))
+                    digits = re.sub(r"\s+", "", digits)
+
+                    reversed_number = int(digits[::-1])
+                    direct_number = int(digits)
+
+
+                    if article_number in {
+                        reversed_number,
+                        direct_number,
+                    }:
+                        if len(cleaned) <= 30:
+                            exact_candidates.append(index)
 
         if exact_candidates:
             selected[article_number] = exact_candidates[0]
@@ -461,6 +483,12 @@ def extract_language_articles(
     )
 
     articles: dict[int, str] = {}
+
+     # Targeted fallback for Arabic article bodies whose Arabic header
+    # is missing or malformed in the PDF extraction.
+    arabic_fallbacks = {
+        1022: (101, 102),
+    }
 
     for position, (
         start_index,
