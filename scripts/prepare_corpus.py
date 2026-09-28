@@ -218,16 +218,6 @@ def detect_english_article(text: str) -> int | None:
 
 
 def detect_arabic_article(text: str) -> int | None:
-    """
-    Detect an Arabic article header.
-
-    PyMuPDF extracts Arabic article digits in visual RTL order.
-
-    Examples:
-        مادة ٨١٤  -> Article 418
-        مادة ٣٤٤  -> Article 443
-        مادة ٣٢٠١ -> Article 1023
-    """
     text = normalize_spaces(text)
 
     text = re.sub(
@@ -238,8 +228,9 @@ def detect_arabic_article(text: str) -> int | None:
 
     text = normalize_spaces(text)
 
+    # The PDF sometimes extracts "مادة" as "ما دة".
     match = re.match(
-        r"^مادة\s+([٠-٩0-9]+)\b",
+        r"^(?:مادة|ما\s+دة)\s+([٠-٩0-9]+)\b",
         text,
     )
 
@@ -247,11 +238,216 @@ def detect_arabic_article(text: str) -> int | None:
         return None
 
     digits = normalize_digits(match.group(1))
-
-    # Arabic article digits are extracted in visual RTL order.
     digits = digits[::-1]
 
     return int(digits)
+
+
+
+def reconstruct_language_lines(
+    spans: list[dict],
+    language: str,
+) -> list[dict]:
+    """Reconstruct lines for one language."""
+
+    if language == "en":
+        selected = [
+            span
+            for span in spans
+            if contains_latin(span["text"])
+            and not contains_arabic(span["text"])
+        ]
+    elif language == "ar":
+        selected = [
+            span
+            for span in spans
+            if contains_arabic(span["text"])
+            and not contains_latin(span["text"])
+        ]
+    else:
+        raise ValueError(f"Unsupported language: {language}")
+
+    groups = group_spans_by_y(selected)
+
+    lines = []
+
+    for group in groups:
+        ordered = sorted(
+            group,
+            key=lambda span: span["x0"],
+            reverse=(language == "ar"),
+        )
+
+        text = normalize_spaces(
+            " ".join(span["text"] for span in ordered)
+        )
+
+        lines.append(
+            {
+                "page": None,
+                "y": group[0]["y0"],
+                "text": text,
+            }
+        )
+
+    return lines
+
+
+def collect_language_lines(
+    doc: pymupdf.Document,
+    language: str,
+) -> list[dict]:
+    """Collect reconstructed language lines across the whole PDF."""
+
+    all_lines = []
+
+    for page_number, page in enumerate(doc, start=1):
+        spans = extract_spans(page)
+
+        lines = reconstruct_language_lines(
+            spans,
+            language,
+        )
+
+        for line in lines:
+            line["page"] = page_number
+            all_lines.append(line)
+
+    return all_lines
+
+
+def detect_article_header(
+    text: str,
+    language: str,
+) -> int | None:
+    """Detect an article header in the requested language."""
+
+    if language == "en":
+        return detect_english_article(text)
+
+    if language == "ar":
+        return detect_arabic_article(text)
+
+    raise ValueError(f"Unsupported language: {language}")
+
+
+def collect_language_article_headers(
+    doc: pymupdf.Document,
+    language: str,
+) -> dict[int, dict]:
+    """
+    Collect article headers for one language.
+
+    Only the first candidate for each article number is retained.
+    """
+
+    lines = collect_language_lines(
+        doc,
+        language,
+    )
+
+    headers: dict[int, dict] = {}
+
+    for line in lines:
+        article_number = detect_article_header(
+            line["text"],
+            language,
+        )
+
+        if article_number is None:
+            continue
+
+        if not 1 <= article_number <= 1149:
+            continue
+
+        if article_number not in headers:
+            headers[article_number] = {
+                "page": line["page"],
+                "y": line["y"],
+                "text": line["text"],
+            }
+
+    return headers
+
+
+def line_position(line: dict) -> tuple[int, float]:
+    """Return a sortable document position."""
+
+    return (
+        line["page"],
+        line["y"],
+    )
+
+
+def extract_language_articles(
+    doc: pymupdf.Document,
+    language: str,
+) -> dict[int, str]:
+    """
+    Extract article text independently for one language.
+
+    Duplicate header detections are ignored after the first valid
+    occurrence of an article number.
+    """
+
+    lines = collect_language_lines(
+        doc,
+        language,
+    )
+
+    header_positions = []
+    seen_articles: set[int] = set()
+
+    for index, line in enumerate(lines):
+        article_number = detect_article_header(
+            line["text"],
+            language,
+        )
+
+        if article_number is None:
+            continue
+
+        if not 1 <= article_number <= 1149:
+            continue
+
+        # Ignore duplicate occurrences such as later references
+        # to an already-seen article.
+        if article_number in seen_articles:
+            continue
+
+        seen_articles.add(article_number)
+
+        header_positions.append(
+            (
+                index,
+                article_number,
+            )
+        )
+
+    articles: dict[int, str] = {}
+
+    for position, (start_index, article_number) in enumerate(
+        header_positions
+    ):
+        if position + 1 < len(header_positions):
+            end_index = header_positions[position + 1][0]
+        else:
+            end_index = len(lines)
+
+        content_lines = lines[
+            start_index + 1 : end_index
+        ]
+
+        content = normalize_spaces(
+            " ".join(
+                line["text"]
+                for line in content_lines
+            )
+        )
+
+        articles[article_number] = content
+
+    return articles
 
 
 def collect_article_headers(
@@ -386,20 +582,49 @@ def validate_article_headers(
         print(arabic_fallback_articles)
 
 def build_article_records(
+    doc: pymupdf.Document,
     headers: dict[int, dict],
 ) -> list[dict]:
-    """Build the initial article-level corpus records."""
+    """Build structured article records with bilingual text."""
+
+    print("Extracting English article text...")
+    articles_en = extract_language_articles(
+        doc,
+        "en",
+    )
+
+    print("Extracting Arabic article text...")
+    articles_ar = extract_language_articles(
+        doc,
+        "ar",
+    )
+
     records = []
 
     for article_number in range(1, 1150):
-        header = headers.get(article_number)
-
         repealed = is_repealed(article_number)
 
-        if header is None:
-            source_page = None
+        header = headers.get(article_number)
+
+        source_page = (
+            header["page"]
+            if header is not None
+            else None
+        )
+
+        if repealed:
+            text_ar = ""
+            text_en = ""
         else:
-            source_page = header["page"]
+            text_ar = articles_ar.get(
+                article_number,
+                "",
+            )
+
+            text_en = articles_en.get(
+                article_number,
+                "",
+            )
 
         records.append(
             {
@@ -408,8 +633,8 @@ def build_article_records(
                 "chapter": None,
                 "section": None,
                 "topic": None,
-                "text_ar": "",
-                "text_en": "",
+                "text_ar": text_ar,
+                "text_en": text_en,
                 "is_repealed": repealed,
                 "source_page": source_page,
                 "citation": (
@@ -420,6 +645,7 @@ def build_article_records(
         )
 
     return records
+
 
 
 def main() -> None:
@@ -442,7 +668,67 @@ def main() -> None:
 
     validate_article_headers(headers)
 
-    records = build_article_records(headers)
+    records = build_article_records(
+        doc,
+        headers,
+    )
+
+    active_records = [
+        record
+        for record in records
+        if not record["is_repealed"]
+    ]
+
+    missing_arabic = [
+        record["article_number"]
+        for record in active_records
+        if not record["text_ar"].strip()
+    ]
+
+    missing_english = [
+        record["article_number"]
+        for record in active_records
+        if not record["text_en"].strip()
+    ]
+
+    print()
+    print(
+        f"Active articles missing Arabic text: "
+        f"{len(missing_arabic)}"
+    )
+
+    print(
+        f"Active articles missing English text: "
+        f"{len(missing_english)}"
+    )
+
+    if missing_arabic:
+        print("Missing Arabic:", missing_arabic)
+
+    if missing_english:
+        print("Missing English:", missing_english)
+
+    with OUTPUT_PATH.open(
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            records,
+            file,
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    print()
+    print(f"Records written: {len(records)}")
+    print(f"Output: {OUTPUT_PATH}")
+
+    validate_article_headers(headers)
+
+    records = build_article_records(
+    doc,
+    headers,
+    )
 
     with OUTPUT_PATH.open(
         "w",
