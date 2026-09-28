@@ -206,7 +206,7 @@ def detect_english_article(text: str) -> int | None:
     text = normalize_spaces(text)
 
     match = re.match(
-        r"^(?:Article|rticle)\s+(\d+)\b",
+        r"^(?:Article|rticle)\s*(\d+)\b",
         text,
         flags=re.IGNORECASE,
     )
@@ -258,21 +258,28 @@ def collect_article_headers(
     doc: pymupdf.Document,
 ) -> dict[int, dict]:
     """
-    Collect the first English occurrence of every article number.
+    Collect article headers using both English and Arabic headers.
 
-    The first occurrence is used because later pages can contain
-    references such as "Article 901".
+    English headers are preferred because they are generally cleaner,
+    but Arabic headers are used as a fallback when the English header
+    is missing or malformed.
     """
     headers: dict[int, dict] = {}
 
     for page_number, page in enumerate(doc, start=1):
         spans = extract_spans(page)
-        lines = reconstruct_english_lines(spans)
 
-        for line in lines:
+        english_lines = reconstruct_english_lines(spans)
+        arabic_lines = reconstruct_arabic_lines(spans)
+
+        # First collect English article headers.
+        for line in english_lines:
             article_number = detect_english_article(line["text"])
 
             if article_number is None:
+                continue
+
+            if not 1 <= article_number <= 1149:
                 continue
 
             if article_number not in headers:
@@ -280,6 +287,26 @@ def collect_article_headers(
                     "page": page_number,
                     "y": line["y"],
                     "text": line["text"],
+                    "language": "en",
+                }
+
+        # Then use Arabic headers for articles whose English header
+        # was not detected.
+        for line in arabic_lines:
+            article_number = detect_arabic_article(line["text"])
+
+            if article_number is None:
+                continue
+
+            if not 1 <= article_number <= 1149:
+                continue
+
+            if article_number not in headers:
+                headers[article_number] = {
+                    "page": page_number,
+                    "y": line["y"],
+                    "text": line["text"],
+                    "language": "ar",
                 }
 
     return headers
@@ -302,7 +329,8 @@ def expected_article_numbers() -> set[int]:
 def validate_article_headers(
     headers: dict[int, dict],
 ) -> None:
-    """Validate the detected English article-header coverage."""
+    """Validate detected article-header coverage."""
+
     expected = expected_article_numbers()
     actual = set(headers)
 
@@ -328,10 +356,34 @@ def validate_article_headers(
         set(range(1, 1150)) - expected
     )
 
+    english_count = sum(
+        1
+        for header in headers.values()
+        if header["language"] == "en"
+    )
+
+    arabic_fallback_count = sum(
+        1
+        for header in headers.values()
+        if header["language"] == "ar"
+    )
+
     print(f"Detected article headers: {len(actual)}")
+    print(f"English headers: {english_count}")
+    print(f"Arabic fallback headers: {arabic_fallback_count}")
     print(f"Expected active article headers: {len(expected)}")
     print(f"Repealed article numbers: {repealed}")
 
+    arabic_fallback_articles = sorted(
+        number
+        for number, header in headers.items()
+        if header["language"] == "ar"
+    )
+
+    if arabic_fallback_articles:
+        print()
+        print("Articles detected through Arabic fallback:")
+        print(arabic_fallback_articles)
 
 def build_article_records(
     headers: dict[int, dict],
