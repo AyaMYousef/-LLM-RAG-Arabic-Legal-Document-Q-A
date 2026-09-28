@@ -194,43 +194,26 @@ def reconstruct_arabic_lines(spans: list[dict]) -> list[dict]:
 
 
 def detect_english_article(text: str) -> int | None:
-    """
-    Detect an English article header.
-
-    Normally the PDF contains:
-        Article 452
-
-    In some locations PyMuPDF loses the first character:
-        rticle 452
-    """
+    text = normalize_spaces(text)
+    text = re.sub(r"[()\[\]{}]", " ", text)
     text = normalize_spaces(text)
 
     match = re.match(
         r"^(?:Article|rticle)\s*(\d+)\b",
         text,
-        flags=re.IGNORECASE,
     )
-
     if not match:
         return None
 
     return int(match.group(1))
 
-
 def detect_arabic_article(text: str) -> int | None:
     text = normalize_spaces(text)
-
-    text = re.sub(
-        r"[()\[\]{}]",
-        " ",
-        text,
-    )
-
+    text = re.sub(r"[()\[\]{}]", " ", text)
     text = normalize_spaces(text)
 
-    # The PDF sometimes extracts "مادة" as "ما دة".
     match = re.match(
-        r"^(?:مادة|ما\s+دة)\s+([٠-٩0-9]+)\b",
+        r"^(?:مادة|ما\s+دة|م\s+ادة)\s+([٠-٩0-9]+)\b",
         text,
     )
 
@@ -241,7 +224,6 @@ def detect_arabic_article(text: str) -> int | None:
     digits = digits[::-1]
 
     return int(digits)
-
 
 
 def reconstruct_language_lines(
@@ -386,17 +368,16 @@ def extract_language_articles(
     """
     Extract article text independently for one language.
 
-    Duplicate header detections are ignored after the first valid
-    occurrence of an article number.
+    Article references can look like genuine headers. Candidates are
+    therefore selected in numerical/document order while preserving
+    chronological consistency between consecutive article numbers.
     """
+    lines = collect_language_lines(doc, language)
 
-    lines = collect_language_lines(
-        doc,
-        language,
-    )
-
-    header_positions = []
-    seen_articles: set[int] = set()
+    expected = sorted(expected_article_numbers())
+    expected_set = set(expected)
+    
+    candidates: dict[int, list[int]] = {}
 
     for index, line in enumerate(lines):
         article_number = detect_article_header(
@@ -407,35 +388,92 @@ def extract_language_articles(
         if article_number is None:
             continue
 
-        if not 1 <= article_number <= 1149:
+        if article_number not in expected_set:
             continue
 
-        # Ignore duplicate occurrences such as later references
-        # to an already-seen article.
-        if article_number in seen_articles:
+        candidates.setdefault(article_number, []).append(index)
+
+    selected: dict[int, int] = {}
+
+    for position, article_number in enumerate(expected):
+        article_candidates = candidates.get(article_number, [])
+
+        if not article_candidates:
             continue
 
-        seen_articles.add(article_number)
-
-        header_positions.append(
-            (
-                index,
-                article_number,
-            )
+        previous_article = (
+            expected[position - 1]
+            if position > 0
+            else None
         )
+
+        previous_index = (
+            selected.get(previous_article, -1)
+            if previous_article is not None
+            else -1
+        )
+
+        valid_candidates = [
+            index
+            for index in article_candidates
+            if index > previous_index
+        ]
+
+        if not valid_candidates:
+            continue
+
+        exact_candidates = []
+
+        for index in valid_candidates:
+            text = normalize_spaces(lines[index]["text"])
+
+            cleaned = re.sub(
+                r"[()\[\]{}]",
+                " ",
+                text,
+            )
+
+            cleaned = normalize_spaces(cleaned)
+
+            if language == "en":
+                if re.fullmatch(
+                    rf"(?:Article|rticle)\s*{article_number}\s*[.]?",
+                    cleaned,
+                ):
+                    exact_candidates.append(index)
+
+            elif language == "ar":
+                if detect_arabic_article(cleaned) == article_number:
+                    if len(cleaned) <= 30:
+                        exact_candidates.append(index)
+
+        if exact_candidates:
+            selected[article_number] = exact_candidates[0]
+        else:
+            selected[article_number] = valid_candidates[0]
+
+    header_positions = sorted(
+        (
+            index,
+            article_number,
+        )
+        for article_number, index in selected.items()
+    )
 
     articles: dict[int, str] = {}
 
-    for position, (start_index, article_number) in enumerate(
-        header_positions
-    ):
+    for position, (
+        start_index,
+        article_number,
+    ) in enumerate(header_positions):
+
         if position + 1 < len(header_positions):
             end_index = header_positions[position + 1][0]
         else:
             end_index = len(lines)
 
         content_lines = lines[
-            start_index + 1 : end_index
+            start_index + 1:end_index
         ]
 
         content = normalize_spaces(
@@ -449,10 +487,9 @@ def extract_language_articles(
 
     return articles
 
-
 def collect_article_headers(
     doc: pymupdf.Document,
-) -> dict[int, dict]:
+     ) -> dict[int, dict]:
     """
     Collect article headers using both English and Arabic headers.
 
