@@ -1,21 +1,14 @@
-import json
+import pymupdf
 
-with open("data/processed/corpus_raw.json", encoding="utf-8") as f:
-    corpus = json.load(f)
+from scripts.corpus_helpers import extract_hierarchy
 
-for number in [1, 1021, 1022, 1023]:
-    article = next(
-        x for x in corpus
-        if x["article_number"] == number
-    )
+PDF_PATH = "data/raw/egyptian_civil_code.pdf"
 
-    print()
-    print("=" * 100)
-    print(f"ARTICLE {number}")
-    print("=" * 100)
+doc = pymupdf.open(PDF_PATH)
 
-    print("\n--- ARABIC ---")
-    print(article["text_ar"])
+hierarchy = extract_hierarchy(doc)
 
-    print("\n--- ENGLISH ---")
-    print(article["text_en"])
+for article_number in [89, 90, 147, 418]:
+    print("=" * 80)
+    print(f"ARTICLE {article_number}")
+    print(hierarchy.get(article_number))

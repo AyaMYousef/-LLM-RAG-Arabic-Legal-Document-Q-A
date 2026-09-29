@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pymupdf
 
+from corpus_helpers import extract_hierarchy
 
 PDF_PATH = Path("data/raw/egyptian_civil_code.pdf")
 OUTPUT_PATH = Path("data/processed/corpus_raw.json")
@@ -660,6 +661,7 @@ def validate_article_headers(
 def build_article_records(
     doc: pymupdf.Document,
     headers: dict[int, dict],
+    hierarchy: dict[int, dict],
 ) -> list[dict]:
     """Build structured article records with bilingual text."""
 
@@ -702,13 +704,18 @@ def build_article_records(
                 "",
             )
 
+        metadata = hierarchy.get(
+            article_number,
+            {},
+        )
+
         records.append(
             {
                 "article_number": article_number,
-                "book": None,
-                "chapter": None,
-                "section": None,
-                "topic": None,
+                "book": metadata.get("book"),
+                "chapter": metadata.get("chapter"),
+                "section": metadata.get("section"),
+                "topic": metadata.get("topic"),
                 "text_ar": text_ar,
                 "text_en": text_en,
                 "is_repealed": repealed,
@@ -740,6 +747,8 @@ def main() -> None:
     print(f"PDF: {PDF_PATH}")
     print(f"Pages: {len(doc)}")
 
+    hierarchy = extract_hierarchy(doc)
+
     headers = collect_article_headers(doc)
 
     validate_article_headers(headers)
@@ -747,6 +756,7 @@ def main() -> None:
     records = build_article_records(
         doc,
         headers,
+        hierarchy,
     )
 
     active_records = [
@@ -799,7 +809,6 @@ def main() -> None:
     print(f"Records written: {len(records)}")
     print(f"Output: {OUTPUT_PATH}")
 
-    
 
 if __name__ == "__main__":
     main()
