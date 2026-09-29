@@ -11,6 +11,8 @@ PDF_PATH = Path("data/raw/egyptian_civil_code.pdf")
 OUTPUT_PATH = Path("data/processed/corpus_raw.json")
 
 Y_TOLERANCE = 2.0
+ARABIC_CODE_START_PAGE = 1
+ARABIC_CODE_START_Y = 250.0
 
 ARABIC_DIGITS = str.maketrans(
     "٠١٢٣٤٥٦٧٨٩",
@@ -397,6 +399,15 @@ def extract_language_articles(
         if article_number not in expected_set:
             continue
 
+        # Ignore the Law of Promulgation on page 1.
+        # Its "مادة ١" is not Civil Code Article 1.
+        if (
+            language == "ar"
+            and line["page"] == ARABIC_CODE_START_PAGE
+            and line["y"] < ARABIC_CODE_START_Y
+        ):
+            continue
+
         candidates.setdefault(article_number, []).append(index)
 
     selected: dict[int, int] = {}
@@ -486,9 +497,9 @@ def extract_language_articles(
 
      # Targeted fallback for Arabic article bodies whose Arabic header
     # is missing or malformed in the PDF extraction.
-    arabic_fallbacks = {
-        1022: (101, 102),
-    }
+   # arabic_fallbacks = {
+    #    1022: (101, 102),
+    #}
 
     for position, (
         start_index,
@@ -788,28 +799,7 @@ def main() -> None:
     print(f"Records written: {len(records)}")
     print(f"Output: {OUTPUT_PATH}")
 
-    validate_article_headers(headers)
-
-    records = build_article_records(
-    doc,
-    headers,
-    )
-
-    with OUTPUT_PATH.open(
-        "w",
-        encoding="utf-8",
-    ) as file:
-        json.dump(
-            records,
-            file,
-            ensure_ascii=False,
-            indent=2,
-        )
-
-    print()
-    print(f"Records written: {len(records)}")
-    print(f"Output: {OUTPUT_PATH}")
-
+    
 
 if __name__ == "__main__":
     main()
