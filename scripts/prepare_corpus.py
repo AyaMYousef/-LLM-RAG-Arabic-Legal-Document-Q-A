@@ -729,7 +729,63 @@ def build_article_records(
 
     return records
 
+def extract_page_lines(page, page_number: int) -> list[dict]:
+    """Extract English / Arabic lines with their page coordinates."""
 
+    lines = []
+
+    for block in page.get_text("dict")["blocks"]:
+        if "lines" not in block:
+            continue
+
+        for line in block["lines"]:
+            spans = line["spans"]
+
+            if not spans:
+                continue
+
+            text = normalize_spaces(
+                "".join(span["text"] for span in spans)
+            )
+
+            if not text:
+                continue
+
+            x = spans[0]["bbox"][0]
+            y = spans[0]["bbox"][1]
+
+            lines.append(
+                {
+                    "page": page_number,
+                    "x": x,
+                    "y": y,
+                    "text": text,
+                }
+            )
+
+    lines.sort(key=lambda item: (item["y"], item["x"]))
+
+    return lines
+
+def debug_hierarchy_pages():
+    doc = pymupdf.open("data/raw/egyptian_civil_code.pdf")
+
+    for page_number in range(159, 162):
+        print(f"\n{'=' * 100}")
+        print(f"PAGE {page_number}")
+        print(f"{'=' * 100}")
+
+        lines = extract_page_lines(
+            doc[page_number - 1],
+            page_number,
+        )
+
+        for line in lines:
+            print(
+                f"Y={line['y']:8.2f} "
+                f"X={line['x']:8.2f} "
+                f"{line['text']!r}"
+            )
 
 def main() -> None:
     if not PDF_PATH.exists():
@@ -747,7 +803,16 @@ def main() -> None:
     print(f"PDF: {PDF_PATH}")
     print(f"Pages: {len(doc)}")
 
+    debug_hierarchy_pages()
+
     hierarchy = extract_hierarchy(doc)
+    for article_number in [89, 90, 145, 146, 147, 148, 418, 1099, 1100, 1101, 1102, 1103, 1104]:
+        print(
+            article_number,
+            "->",
+            hierarchy.get(article_number),
+        )
+
 
     headers = collect_article_headers(doc)
 
@@ -811,4 +876,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    
     main()

@@ -6,7 +6,13 @@ import re
 BOOK_RE = re.compile(r"^BOOK\s+[IVXLCDM]+$", re.IGNORECASE)
 CHAPTER_RE = re.compile(r"^CHAPTER\s+[IVXLCDM]+$", re.IGNORECASE)
 SECTION_RE = re.compile(r"^SECTION\s+[IVXLCDM]+$", re.IGNORECASE)
-TOPIC_RE = re.compile(r"^\d+\.\s*(.+)$")
+TOPIC_RE = re.compile(
+    r"^\d+\s*\.\s*(.+)$"
+)
+
+SUBHEADING_RE = re.compile(
+    r"^\d+\s*-\s*(.+)$"
+)
 
 
 def normalize_spaces(text: str) -> str:
@@ -54,17 +60,17 @@ def extract_page_lines(page, page_number: int) -> list[dict]:
 
     return lines
 
-
 def extract_hierarchy(doc) -> dict[int, dict]:
     """
     Extract hierarchy metadata and associate it with articles.
 
-    Target hierarchy:
+    Hierarchy:
 
         BOOK       -> book
         CHAPTER    -> chapter
-        Section    -> section
-        numbered heading -> topic
+        SECTION    -> section
+        numbered heading -> structural subtopic
+        plain English heading before articles -> topic
     """
 
     hierarchy_by_article = {}
@@ -75,17 +81,18 @@ def extract_hierarchy(doc) -> dict[int, dict]:
     current_topic = None
 
     pending_structure = None
+    pending_plain_heading = None
 
     for page_index, page in enumerate(doc):
         page_number = page_index + 1
         lines = extract_page_lines(page, page_number)
 
-        for line in lines:
+        for index, line in enumerate(lines):
             text = line["text"]
 
-            # --------------------------------------------------
+            # ---------------------------------------------------------
             # ARTICLE
-            # --------------------------------------------------
+            # ---------------------------------------------------------
             article_match = re.match(
                 r"^Article\s*(\d+)\b",
                 text,
@@ -94,6 +101,12 @@ def extract_hierarchy(doc) -> dict[int, dict]:
 
             if article_match:
                 article_number = int(article_match.group(1))
+
+                # A plain English heading immediately before the
+                # article becomes the topic.
+                if pending_plain_heading is not None:
+                    current_topic = pending_plain_heading
+                    pending_plain_heading = None
 
                 hierarchy_by_article[article_number] = {
                     "book": current_book,
@@ -105,38 +118,33 @@ def extract_hierarchy(doc) -> dict[int, dict]:
                 pending_structure = None
                 continue
 
-            # --------------------------------------------------
+            # ---------------------------------------------------------
             # BOOK
-            # --------------------------------------------------
+            # ---------------------------------------------------------
             if BOOK_RE.fullmatch(text):
                 pending_structure = "book"
                 continue
 
-            # --------------------------------------------------
+            # ---------------------------------------------------------
             # CHAPTER
-            # --------------------------------------------------
+            # ---------------------------------------------------------
             if CHAPTER_RE.fullmatch(text):
                 pending_structure = "chapter"
                 continue
 
-            # --------------------------------------------------
+            # ---------------------------------------------------------
             # SECTION
-            # --------------------------------------------------
+            # ---------------------------------------------------------
             if SECTION_RE.fullmatch(text):
                 pending_structure = "section"
                 continue
 
-            # --------------------------------------------------
-            # If we are waiting for a structural title,
-            # accept only a clean English heading.
-            # --------------------------------------------------
+            # ---------------------------------------------------------
+            # STRUCTURAL TITLE
+            # ---------------------------------------------------------
             if pending_structure is not None:
 
                 if contains_arabic(text):
-                    continue
-
-                if text.lower().startswith("article"):
-                    pending_structure = None
                     continue
 
                 if BOOK_RE.fullmatch(text):
@@ -148,14 +156,7 @@ def extract_hierarchy(doc) -> dict[int, dict]:
                 if SECTION_RE.fullmatch(text):
                     continue
 
-                # Numbered headings are topics, not structural titles.
-                if TOPIC_RE.fullmatch(text):
-                    pending_structure = None
-                    current_topic = normalize_spaces(
-                        TOPIC_RE.fullmatch(text).group(1)
-                    )
-                    continue
-
+                # English title following BOOK / CHAPTER / SECTION
                 if pending_structure == "book":
                     current_book = text
 
@@ -168,15 +169,90 @@ def extract_hierarchy(doc) -> dict[int, dict]:
                 pending_structure = None
                 continue
 
-            # --------------------------------------------------
-            # TOPIC
-            # --------------------------------------------------
+            # ---------------------------------------------------------
+            # NUMBERED SUBHEADING
+            # ---------------------------------------------------------
             topic_match = TOPIC_RE.fullmatch(text)
 
             if topic_match:
-                current_topic = normalize_spaces(
-                    topic_match.group(1)
-                )
+                current_topic = topic_match.group(1).strip()
                 continue
 
+            if SUBHEADING_RE.fullmatch(text):
+                continue
+
+            # ---------------------------------------------------------
+            # ---------------------------------------------------------
+            # ---------------------------------------------------------
+            # ---------------------------------------------------------
+            # ---------------------------------------------------------
+            # ---------------------------------------------------------
+            # PLAIN ENGLISH TOPIC HEADING
+            # ---------------------------------------------------------
+            if (
+                not contains_arabic(text)
+                and not text.lower().startswith("article")
+            ):
+                previous_line = (
+                    lines[index - 1]
+                    if index > 0
+                    else None
+                )
+
+                if (
+                    previous_line
+                    and contains_arabic(previous_line["text"])
+                    and abs(line["y"] - previous_line["y"]) < 5
+                ):
+                    valid_heading = True
+
+                    for future_index in range(
+                        index + 1,
+                        min(index + 5, len(lines)),
+                    ):
+                        future_text = lines[future_index]["text"]
+
+                        if re.match(
+                            r"^Article\s*\d+\b",
+                            future_text,
+                            re.IGNORECASE,
+                        ):
+                            if valid_heading:
+                                pending_plain_heading = text
+                            break
+
+                        if looks_like_arabic_article_number(
+                            future_text
+                        ):
+                            continue
+
+                        # Anything else means this is not an
+                        # article heading.
+                        valid_heading = False
+                        break
+                        if looks_like_arabic_article_number(future_text):
+                            continue
+
+                        # Another English line means this is likely
+                        # normal article text rather than a heading.
+                        if (
+                            not contains_arabic(future_text)
+                            and not future_text.lower().startswith("article")
+                        ):
+                            break
+
     return hierarchy_by_article
+
+
+
+def looks_like_arabic_article_number(text: str) -> bool:
+    """Return True for Arabic article-number/header lines."""
+    text = normalize_spaces(text)
+
+    if "مادة" in text:
+        return True
+
+    if re.fullmatch(r"[٠-٩0-9\s]+", text):
+        return True
+
+    return False
