@@ -806,6 +806,30 @@ def main() -> None:
     debug_hierarchy_pages()
 
     hierarchy = extract_hierarchy(doc)
+    print("\nHIERARCHY CHECK")
+    print("=" * 100)
+
+    for article_number, metadata in hierarchy.items():
+        if metadata["topic"] is None:
+            print(
+                f"Article {article_number}: "
+                f"book={metadata['book']!r}, "
+                f"chapter={metadata['chapter']!r}, "
+                f"section={metadata['section']!r}, "
+                f"topic=None"
+            )
+
+        print("\nTOPIC VALUES")
+        print("=" * 100)
+
+        topics = {}
+
+        for article_number, metadata in hierarchy.items():
+            topic = metadata["topic"]
+            topics.setdefault(topic, []).append(article_number)
+
+        for topic, articles in topics.items():
+            print(f"{topic!r}: {len(articles)} articles")       
     for article_number in [89, 90, 145, 146, 147, 148, 418, 1099, 1100, 1101, 1102, 1103, 1104]:
         print(
             article_number,
