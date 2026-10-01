@@ -19,6 +19,9 @@ def contains_arabic(text: str) -> bool:
     """Return True if text contains Arabic characters."""
     return bool(re.search(r"[\u0600-\u06FF]", text))
 
+def is_topic_heading(line: dict) -> bool:
+    """Return True when a line is a bold topic heading."""
+    return is_bold_line(line)
 
 def is_bold_line(line: dict) -> bool:
     """
