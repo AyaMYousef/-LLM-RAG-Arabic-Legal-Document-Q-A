@@ -7,6 +7,10 @@ BOOK_RE = re.compile(r"^BOOK\s+[IVXLCDM]+$", re.IGNORECASE)
 CHAPTER_RE = re.compile(r"^CHAPTER\s+[IVXLCDM]+$", re.IGNORECASE)
 SECTION_RE = re.compile(r"^SECTION\s+[IVXLCDM]+$", re.IGNORECASE)
 
+AR_BOOK_RE = re.compile(r"^الباب\b")
+AR_CHAPTER_RE = re.compile(r"^الفصل\b")
+AR_SECTION_RE = re.compile(r"^القسم\b")
+
 TOPIC_RE = re.compile(r"^\d+\s*[-.]\s*(.+)$")
 
 
@@ -203,6 +207,17 @@ def extract_hierarchy(doc) -> dict[int, dict]:
             # because that incorrectly classified article sentences
             # as topics.
             # ---------------------------------------------------------
+            # Ignore Arabic structural labels such as:
+            # الباب الأول
+            # الفصل الأول
+            # القسم الأول
+            if (
+                AR_BOOK_RE.match(text)
+                or AR_CHAPTER_RE.match(text)
+                or AR_SECTION_RE.match(text)
+            ):
+                continue
+
             if not is_bold_line(line):
                 continue
 
