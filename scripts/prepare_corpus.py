@@ -517,12 +517,12 @@ def extract_language_articles(
         ]
 
         content = normalize_spaces(
-            " ".join(
-                line["text"]
-                for line in content_lines
-                if not is_bold_line(line)
-            )
+        " ".join(
+            line["text"]
+            for line in content_lines
+            if not is_bold_line(line)
         )
+    )
 
         articles[article_number] = content
 
