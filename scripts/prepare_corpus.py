@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pymupdf
 
-from corpus_helpers import extract_hierarchy
+from corpus_helpers import extract_hierarchy, extract_page_lines
 
 PDF_PATH = Path("data/raw/egyptian_civil_code.pdf")
 OUTPUT_PATH = Path("data/processed/corpus_raw.json")
@@ -715,7 +715,8 @@ def build_article_records(
                 "book": metadata.get("book"),
                 "chapter": metadata.get("chapter"),
                 "section": metadata.get("section"),
-                "topic": metadata.get("topic"),
+                "topic_ar": metadata.get("topic_ar"),
+                "topic_en": metadata.get("topic_en"),
                 "text_ar": text_ar,
                 "text_en": text_en,
                 "is_repealed": repealed,
@@ -755,13 +756,22 @@ def extract_page_lines(page, page_number: int) -> list[dict]:
             y = spans[0]["bbox"][1]
 
             lines.append(
-                {
-                    "page": page_number,
-                    "x": x,
-                    "y": y,
-                    "text": text,
-                }
-            )
+            {
+                "page": page_number,
+                "x": x,
+                "y": y,
+                "text": text,
+                "spans": [
+                    {
+                        "text": span["text"],
+                        "font": span["font"],
+                        "size": span["size"],
+                        "flags": span["flags"],
+                    }
+                    for span in spans
+                ],
+            }
+        )
 
     lines.sort(key=lambda item: (item["y"], item["x"]))
 
@@ -800,6 +810,28 @@ def main() -> None:
 
     doc = pymupdf.open(PDF_PATH)
 
+    for page in doc:
+        lines = extract_page_lines(page, page.number + 1)
+
+        for line in lines:
+            if (
+                "The Effects of a Contract" in line["text"]
+                or "over these implements." in line["text"]
+            ):
+                print("\n" + "=" * 80)
+                print("PAGE:", line["page"])
+                print("TEXT:", repr(line["text"]))
+                print("SPANS:")
+
+                for span in line["spans"]:
+                    print(
+                        "  ",
+                        "TEXT:", repr(span["text"]),
+                        "FONT:", span["font"],
+                        "SIZE:", span["size"],
+                        "FLAGS:", span["flags"],
+                    )
+
     print(f"PDF: {PDF_PATH}")
     print(f"Pages: {len(doc)}")
 
@@ -810,93 +842,117 @@ def main() -> None:
     print("=" * 100)
 
     for article_number, metadata in hierarchy.items():
-        if metadata["topic"] is None:
-            print(
-                f"Article {article_number}: "
-                f"book={metadata['book']!r}, "
-                f"chapter={metadata['chapter']!r}, "
-                f"section={metadata['section']!r}, "
-                f"topic=None"
+            if (
+                metadata["topic_ar"] is None
+                or metadata["topic_en"] is None
+            ):
+                print(
+                    f"Article {article_number}: "
+                    f"book={metadata['book']!r}, "
+                    f"chapter={metadata['chapter']!r}, "
+                    f"section={metadata['section']!r}, "
+                    f"topic_ar={metadata['topic_ar']!r}, "
+                    f"topic_en={metadata['topic_en']!r}"
+                )
+
+
+            print("\nTOPIC VALUES")
+            print("=" * 100)
+
+            topics = {}
+
+            for article_number, metadata in hierarchy.items():
+                topic_en = metadata["topic_en"]
+                topics.setdefault(topic_en, []).append(article_number)
+
+            for topic_en, articles in topics.items():
+                print(f"{topic_en!r}: {len(articles)} articles")
+
+
+            print("\nSAMPLE HIERARCHY")
+            print("=" * 100)
+
+            for article_number in [
+                89,
+                90,
+                145,
+                146,
+                147,
+                148,
+                418,
+                1099,
+                1100,
+                1101,
+                1102,
+                1103,
+                1104,
+            ]:
+                print(
+                    article_number,
+                    "->",
+                    hierarchy.get(article_number),
+                )
+
+
+            headers = collect_article_headers(doc)
+
+            validate_article_headers(headers)
+
+            records = build_article_records(
+                doc,
+                headers,
+                hierarchy,
             )
 
-        print("\nTOPIC VALUES")
-        print("=" * 100)
+            active_records = [
+                record
+                for record in records
+                if not record["is_repealed"]
+            ]
 
-        topics = {}
+            missing_arabic = [
+                record["article_number"]
+                for record in active_records
+                if not record["text_ar"].strip()
+            ]
 
-        for article_number, metadata in hierarchy.items():
-            topic = metadata["topic"]
-            topics.setdefault(topic, []).append(article_number)
+            missing_english = [
+                record["article_number"]
+                for record in active_records
+                if not record["text_en"].strip()
+            ]
 
-        for topic, articles in topics.items():
-            print(f"{topic!r}: {len(articles)} articles")       
-    for article_number in [89, 90, 145, 146, 147, 148, 418, 1099, 1100, 1101, 1102, 1103, 1104]:
-        print(
-            article_number,
-            "->",
-            hierarchy.get(article_number),
-        )
+            print()
+            print(
+                f"Active articles missing Arabic text: "
+                f"{len(missing_arabic)}"
+            )
 
+            print(
+                f"Active articles missing English text: "
+                f"{len(missing_english)}"
+            )
 
-    headers = collect_article_headers(doc)
+            if missing_arabic:
+                print("Missing Arabic:", missing_arabic)
 
-    validate_article_headers(headers)
+            if missing_english:
+                print("Missing English:", missing_english)
 
-    records = build_article_records(
-        doc,
-        headers,
-        hierarchy,
-    )
+            with OUTPUT_PATH.open(
+                "w",
+                encoding="utf-8",
+            ) as file:
+                json.dump(
+                    records,
+                    file,
+                    ensure_ascii=False,
+                    indent=2,
+                )
 
-    active_records = [
-        record
-        for record in records
-        if not record["is_repealed"]
-    ]
-
-    missing_arabic = [
-        record["article_number"]
-        for record in active_records
-        if not record["text_ar"].strip()
-    ]
-
-    missing_english = [
-        record["article_number"]
-        for record in active_records
-        if not record["text_en"].strip()
-    ]
-
-    print()
-    print(
-        f"Active articles missing Arabic text: "
-        f"{len(missing_arabic)}"
-    )
-
-    print(
-        f"Active articles missing English text: "
-        f"{len(missing_english)}"
-    )
-
-    if missing_arabic:
-        print("Missing Arabic:", missing_arabic)
-
-    if missing_english:
-        print("Missing English:", missing_english)
-
-    with OUTPUT_PATH.open(
-        "w",
-        encoding="utf-8",
-    ) as file:
-        json.dump(
-            records,
-            file,
-            ensure_ascii=False,
-            indent=2,
-        )
-
-    print()
-    print(f"Records written: {len(records)}")
-    print(f"Output: {OUTPUT_PATH}")
+            print()
+            print(f"Records written: {len(records)}")
+            print(f"Output: {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":

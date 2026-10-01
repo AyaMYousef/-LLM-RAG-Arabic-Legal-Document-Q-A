@@ -6,25 +6,39 @@ import re
 BOOK_RE = re.compile(r"^BOOK\s+[IVXLCDM]+$", re.IGNORECASE)
 CHAPTER_RE = re.compile(r"^CHAPTER\s+[IVXLCDM]+$", re.IGNORECASE)
 SECTION_RE = re.compile(r"^SECTION\s+[IVXLCDM]+$", re.IGNORECASE)
-TOPIC_RE = re.compile(
-    r"^\d+\s*\.\s*(.+)$"
-)
 
-SUBHEADING_RE = re.compile(
-    r"^\d+\s*-\s*(.+)$"
-)
+TOPIC_RE = re.compile(r"^\d+\s*[-.]\s*(.+)$")
 
 
 def normalize_spaces(text: str) -> str:
+    """Collapse repeated whitespace and strip surrounding spaces."""
     return re.sub(r"\s+", " ", text).strip()
 
 
 def contains_arabic(text: str) -> bool:
+    """Return True if text contains Arabic characters."""
     return bool(re.search(r"[\u0600-\u06FF]", text))
 
 
+def is_bold_line(line: dict) -> bool:
+    """
+    Return True if at least one span in the line is bold.
+
+    PyMuPDF reports flags=16 for the bold font used by the PDF.
+    """
+    return any(
+        span.get("flags", 0) & 16
+        for span in line.get("spans", [])
+    )
+
+
 def extract_page_lines(page, page_number: int) -> list[dict]:
-    """Extract English / Arabic lines with their page coordinates."""
+    """
+    Extract page lines with position and font metadata.
+
+    The PDF is bilingual and uses separate Arabic and English columns,
+    so we preserve span metadata for later topic detection.
+    """
     lines = []
 
     for block in page.get_text("dict")["blocks"]:
@@ -53,12 +67,22 @@ def extract_page_lines(page, page_number: int) -> list[dict]:
                     "x": x,
                     "y": y,
                     "text": text,
+                    "spans": [
+                        {
+                            "text": span["text"],
+                            "font": span["font"],
+                            "size": span["size"],
+                            "flags": span["flags"],
+                        }
+                        for span in spans
+                    ],
                 }
             )
 
     lines.sort(key=lambda item: (item["y"], item["x"]))
 
     return lines
+
 
 def extract_hierarchy(doc) -> dict[int, dict]:
     """
@@ -69,8 +93,12 @@ def extract_hierarchy(doc) -> dict[int, dict]:
         BOOK       -> book
         CHAPTER    -> chapter
         SECTION    -> section
-        numbered heading -> structural subtopic
-        plain English heading before articles -> topic
+        bold topic row
+            -> topic_ar / topic_en
+
+    The PDF contains Arabic and English topic headings in separate
+    columns. Topic detection therefore relies on PDF bold formatting
+    rather than guessing from ordinary English article text.
     """
 
     hierarchy_by_article = {}
@@ -78,10 +106,11 @@ def extract_hierarchy(doc) -> dict[int, dict]:
     current_book = None
     current_chapter = None
     current_section = None
-    current_topic = None
+
+    current_topic_ar = None
+    current_topic_en = None
 
     pending_structure = None
-    pending_plain_heading = None
 
     for page_index, page in enumerate(doc):
         page_number = page_index + 1
@@ -91,7 +120,7 @@ def extract_hierarchy(doc) -> dict[int, dict]:
             text = line["text"]
 
             # ---------------------------------------------------------
-            # ARTICLE
+            # Article header
             # ---------------------------------------------------------
             article_match = re.match(
                 r"^Article\s*(\d+)\b",
@@ -102,48 +131,36 @@ def extract_hierarchy(doc) -> dict[int, dict]:
             if article_match:
                 article_number = int(article_match.group(1))
 
-                # A plain English heading immediately before the
-                # article becomes the topic.
-                if pending_plain_heading is not None:
-                    current_topic = pending_plain_heading
-                    pending_plain_heading = None
-
                 hierarchy_by_article[article_number] = {
                     "book": current_book,
                     "chapter": current_chapter,
                     "section": current_section,
-                    "topic": current_topic,
+                    "topic_ar": current_topic_ar,
+                    "topic_en": current_topic_en,
                 }
 
                 pending_structure = None
                 continue
 
             # ---------------------------------------------------------
-            # BOOK
+            # Structural headings
             # ---------------------------------------------------------
             if BOOK_RE.fullmatch(text):
                 pending_structure = "book"
                 continue
 
-            # ---------------------------------------------------------
-            # CHAPTER
-            # ---------------------------------------------------------
             if CHAPTER_RE.fullmatch(text):
                 pending_structure = "chapter"
                 continue
 
-            # ---------------------------------------------------------
-            # SECTION
-            # ---------------------------------------------------------
             if SECTION_RE.fullmatch(text):
                 pending_structure = "section"
                 continue
 
             # ---------------------------------------------------------
-            # STRUCTURAL TITLE
+            # Value belonging to BOOK / CHAPTER / SECTION
             # ---------------------------------------------------------
             if pending_structure is not None:
-
                 if contains_arabic(text):
                     continue
 
@@ -156,7 +173,6 @@ def extract_hierarchy(doc) -> dict[int, dict]:
                 if SECTION_RE.fullmatch(text):
                     continue
 
-                # English title following BOOK / CHAPTER / SECTION
                 if pending_structure == "book":
                     current_book = text
 
@@ -170,89 +186,76 @@ def extract_hierarchy(doc) -> dict[int, dict]:
                 continue
 
             # ---------------------------------------------------------
-            # NUMBERED SUBHEADING
+            # Topic detection
+            #
+            # Topics in the PDF are bold and appear in separate
+            # Arabic / English columns.
+            #
+            # We deliberately DO NOT use:
+            #
+            #   English-only text
+            #   previous Arabic line
+            #   Article within next N lines
+            #
+            # because that incorrectly classified article sentences
+            # as topics.
             # ---------------------------------------------------------
-            topic_match = TOPIC_RE.fullmatch(text)
-
-            if topic_match:
-                current_topic = topic_match.group(1).strip()
+            if not is_bold_line(line):
                 continue
 
-            if SUBHEADING_RE.fullmatch(text):
+            # Ignore Article headers that happen to be bold.
+            if re.match(r"^Article\s*\d+\b", text, re.IGNORECASE):
                 continue
 
-            # ---------------------------------------------------------
-            # ---------------------------------------------------------
-            # ---------------------------------------------------------
-            # ---------------------------------------------------------
-            # ---------------------------------------------------------
-            # ---------------------------------------------------------
-            # PLAIN ENGLISH TOPIC HEADING
-            # ---------------------------------------------------------
+            # Ignore BOOK / CHAPTER / SECTION labels.
             if (
-                not contains_arabic(text)
-                and not text.lower().startswith("article")
+                BOOK_RE.fullmatch(text)
+                or CHAPTER_RE.fullmatch(text)
+                or SECTION_RE.fullmatch(text)
             ):
-                previous_line = (
-                    lines[index - 1]
-                    if index > 0
-                    else None
-                )
+                continue
 
-                if (
-                    previous_line
-                    and contains_arabic(previous_line["text"])
-                    and abs(line["y"] - previous_line["y"]) < 5
-                ):
-                    valid_heading = True
+            # Ignore structural numbered headings for now.
+            #
+            # The actual bilingual topic text will be extracted from
+            # the bold Arabic / English cells.
+            if TOPIC_RE.fullmatch(text):
+                topic_text = TOPIC_RE.fullmatch(text).group(1).strip()
+            else:
+                topic_text = text
 
-                    for future_index in range(
-                        index + 1,
-                        min(index + 5, len(lines)),
-                    ):
-                        future_text = lines[future_index]["text"]
+            if not topic_text:
+                continue
 
-                        if re.match(
-                            r"^Article\s*\d+\b",
-                            future_text,
-                            re.IGNORECASE,
-                        ):
-                            if valid_heading:
-                                pending_plain_heading = text
-                            break
+            # ---------------------------------------------------------
+            # Determine column.
+            #
+            # English text in this PDF is on the left side.
+            # Arabic text is on the right side.
+            #
+            # We use the line's x coordinate rather than the language
+            # alone because a topic row can contain both languages.
+            # ---------------------------------------------------------
+            if contains_arabic(topic_text) and not contains_latin(topic_text):
+                current_topic_ar = topic_text
 
-                        if looks_like_arabic_article_number(
-                            future_text
-                        ):
-                            continue
+            elif contains_latin(topic_text) and not contains_arabic(topic_text):
+                current_topic_en = topic_text
 
-                        # Anything else means this is not an
-                        # article heading.
-                        valid_heading = False
-                        break
-                        if looks_like_arabic_article_number(future_text):
-                            continue
-
-                        # Another English line means this is likely
-                        # normal article text rather than a heading.
-                        if (
-                            not contains_arabic(future_text)
-                            and not future_text.lower().startswith("article")
-                        ):
-                            break
+            else:
+                # Mixed Arabic/English bold line.
+                #
+                # Keep it for now only when the line itself is clearly
+                # a topic row. We will refine column splitting after
+                # inspecting the actual span coordinates.
+                if line["x"] >= 250:
+                    current_topic_ar = topic_text
+                else:
+                    current_topic_en = topic_text
 
     return hierarchy_by_article
 
 
-
-def looks_like_arabic_article_number(text: str) -> bool:
-    """Return True for Arabic article-number/header lines."""
-    text = normalize_spaces(text)
-
-    if "مادة" in text:
-        return True
-
-    if re.fullmatch(r"[٠-٩0-9\s]+", text):
-        return True
-
-    return False
+def contains_latin(text: str) -> bool:
+    """Return True if text contains Latin alphabet characters."""
+    return bool(re.search(r"[A-Za-z]", text))
