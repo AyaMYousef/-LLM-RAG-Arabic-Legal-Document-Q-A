@@ -1,0 +1,113 @@
+================================================================================
+CORPUS VALIDATION REPORT
+================================================================================
+
+INPUT
+--------------------------------------------------------------------------------
+Corpus: data/processed/corpus_raw.json
+Records: 1149
+
+EXPECTED SCHEMA
+--------------------------------------------------------------------------------
+article_number, book, chapter, citation, is_repealed, section, source_page, text_ar, text_en, topic_ar, topic_en
+
+REPEALED RANGES
+--------------------------------------------------------------------------------
+Articles 54–80
+Articles 389–417
+
+RANDOM SAMPLE
+--------------------------------------------------------------------------------
+Article 52 → PDF page 7 (AR chars=416, EN chars=585)
+Article 82 → PDF page 7 (AR chars=207, EN chars=288)
+Article 89 → PDF page 8 (AR chars=125, EN chars=180)
+Article 93 → PDF page 9 (AR chars=136, EN chars=232)
+Article 206 → PDF page 25 (AR chars=75, EN chars=143)
+Article 219 → PDF page 27 (AR chars=230, EN chars=366)
+Article 237 → PDF page 29 (AR chars=252, EN chars=416)
+Article 256 → PDF page 33 (AR chars=210, EN chars=349)
+Article 313 → PDF page 41 (AR chars=77, EN chars=151)
+Article 464 → PDF page 60 (AR chars=97, EN chars=185)
+Article 504 → PDF page 65 (AR chars=352, EN chars=612)
+Article 508 → PDF page 66 (AR chars=129, EN chars=205)
+Article 514 → PDF page 67 (AR chars=458, EN chars=912)
+Article 533 → PDF page 71 (AR chars=106, EN chars=205)
+Article 558 → PDF page 74 (AR chars=96, EN chars=145)
+Article 620 → PDF page 84 (AR chars=89, EN chars=144)
+Article 916 → PDF page 131 (AR chars=501, EN chars=978)
+Article 921 → PDF page 132 (AR chars=130, EN chars=125)
+Article 976 → PDF page 141 (AR chars=334, EN chars=504)
+Article 1091 → PDF page 159 (AR chars=279, EN chars=459)
+
+ERRORS
+--------------------------------------------------------------------------------
+None
+
+WARNINGS
+--------------------------------------------------------------------------------
+[WARNING] Article 1022: Arabic text is absent from the source PDF.
+[WARNING] Article 1: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 2: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 3: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 4: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 5: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 6: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 7: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 8: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 9: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 10: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 11: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 12: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 13: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 14: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 15: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 16: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 17: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 18: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 19: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 20: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 21: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 22: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 23: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 24: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 25: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 26: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 27: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 28: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 29: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 30: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 31: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 32: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 33: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 34: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 35: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 36: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 37: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 38: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 39: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 40: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 41: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 42: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 43: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 44: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 45: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 46: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 47: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 48: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 49: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 50: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 51: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 52: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 53: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 81: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 82: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 83: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 84: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 85: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 86: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 87: missing hierarchy fields ['book', 'chapter']
+[WARNING] Article 88: missing hierarchy fields ['book', 'chapter']
+
+================================================================================
+RESULT: PASS
+================================================================================

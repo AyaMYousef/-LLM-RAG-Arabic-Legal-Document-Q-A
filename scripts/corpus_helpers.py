@@ -130,10 +130,10 @@ def extract_hierarchy(doc) -> dict[int, dict]:
             # Article header
             # ---------------------------------------------------------
             article_match = re.match(
-                r"^Article\s*(\d+)\b",
-                text,
-                re.IGNORECASE,
-            )
+            r"^A?rticle\s*(\d+)\b",
+            text,
+            re.IGNORECASE,
+        )
 
             if article_match:
                 article_number = int(article_match.group(1))
@@ -222,7 +222,7 @@ def extract_hierarchy(doc) -> dict[int, dict]:
                 continue
 
             # Ignore Article headers that happen to be bold.
-            if re.match(r"^Article\s*\d+\b", text, re.IGNORECASE):
+            if re.match(r"^A?rticle\s*\d+\b", text, re.IGNORECASE):
                 continue
 
             # Ignore BOOK / CHAPTER / SECTION labels.
