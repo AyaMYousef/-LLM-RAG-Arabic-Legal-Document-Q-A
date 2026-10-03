@@ -127,7 +127,7 @@ def main() -> None:
         query = item["query"]
         expected = item["expected_article"]
 
-        query_text = f"query: {query}"
+        query_text = query
 
         embedding = model.encode(
             [query_text],

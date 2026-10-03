@@ -78,8 +78,14 @@ def main() -> None:
     # ------------------------------------------------------------------
     print("\n[5/5] Building FAISS index...")
 
-    metadata = [chunk["metadata"] for chunk in chunks]
-
+    metadata = [
+    {
+        **chunk["metadata"],
+        "text_en": article.get("text_en"),
+        "text_ar": article.get("text_ar"),
+    }
+    for article, chunk in zip(articles, chunks)
+]
     store = FAISSVectorStore(
         dimension=embedder.dimension,
     )

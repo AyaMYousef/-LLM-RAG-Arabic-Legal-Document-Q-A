@@ -4,17 +4,7 @@ from typing import Any
 
 
 def build_chunk_text(article: dict[str, Any]) -> str:
-    """Build the bilingual text used as the embedding input."""
-
-    parts = [
-        article["citation"],
-    ]
-
-    if article.get("topic_en"):
-        parts.append(f"Topic: {article['topic_en']}")
-
-    if article.get("topic_ar"):
-        parts.append(f"الموضوع: {article['topic_ar']}")
+    parts = [article["citation"]]
 
     if article.get("text_en"):
         parts.append(f"English:\n{article['text_en']}")
