@@ -1,0 +1,22 @@
+schema: '2.0'
+stages:
+  extract_articles:
+    cmd: uv run python scripts/prepare_corpus.py
+    deps:
+    - path: data/raw/egyptian_civil_code.pdf
+      hash: md5
+      md5: 5086ef5f16f15d856278db943e58e948
+      size: 2599703
+    - path: scripts/corpus_helpers.py
+      hash: md5
+      md5: bcb5891bc7ed7b064ba186e77d568dbc
+      size: 8746
+    - path: scripts/prepare_corpus.py
+      hash: md5
+      md5: af2a94d0d279a59ab49bd706a74959f4
+      size: 24058
+    outs:
+    - path: data/processed/corpus_raw.json
+      hash: md5
+      md5: d71767791bdcd662003a521c23e24d2c
+      size: 1323389

@@ -134,3 +134,105 @@ The extracted output is formatted to match the required document specification:
 }
 
 ```
+
+
+## Corpus Extraction
+
+The Egyptian Civil Code PDF was processed to create a structured, article-level bilingual corpus for the legal RAG pipeline.
+
+### Source Document
+
+* **Input:** `data/raw/egyptian_civil_code.pdf`
+* **Format:** Bilingual Arabic/English PDF
+* **Length:** 170 pages
+* **Target:** Extract the Civil Code article-by-article while preserving the surrounding legal hierarchy and source-page information.
+
+### Extraction Process
+
+The extraction pipeline:
+
+1. Reads the PDF page by page using PyMuPDF.
+2. Detects article headers from the English article numbering in the PDF.
+3. Converts Arabic-Indic article numbers into normalized integer article numbers.
+4. Associates each article with its surrounding:
+
+   * Book
+   * Chapter
+   * Section
+   * Arabic topic
+   * English topic
+   
+5. Extracts the Arabic and English text belonging to each article.
+6. Records the original PDF page containing the article.
+7. Marks articles belonging to repealed ranges.
+8. Writes the extracted corpus as structured JSON.
+
+The resulting records follow this schema:
+
+```text
+article_number
+book
+chapter
+section
+citation
+is_repealed
+source_page
+text_ar
+text_en
+topic_ar
+topic_en
+```
+
+### Repealed Articles
+
+The source document explicitly identifies the following article ranges as repealed:
+
+* Articles **54–80**
+* Articles **389–417**
+
+These ranges are retained in the corpus with `is_repealed: true` so that the original legal numbering is preserved while allowing downstream retrieval and filtering to distinguish active provisions from repealed ones.
+
+### Extraction Results
+
+The latest corpus extraction produced:
+
+* **1,149 article records**
+* **1,094 detected English article headers**
+* **1,093 expected active articles** after accounting for the repealed ranges
+* Arabic and English article text are stored separately
+* Source PDF page numbers are preserved for traceability
+
+The corpus is therefore represented at the **article level**, rather than as one large block of extracted PDF text. This structure is intended to support precise legal retrieval, citation, filtering, and later RAG evaluation.
+
+### Validation
+
+After extraction, a validation script was used to check the generated corpus against the expected schema and article numbering.
+
+The validation checks include:
+
+* Expected fields are present.
+* Article numbers are normalized correctly.
+* Repealed ranges are marked correctly.
+* Article records can be traced back to PDF pages.
+* Arabic and English text are extracted where available.
+* Random article samples are inspected against the original PDF.
+
+The validation report is generated with:
+
+```bash
+uv run python scripts/validate_corpus.py
+```
+
+To save the validation output as a text file:
+
+```bash
+uv run python scripts/validate_corpus.py | tee reports/validation_report.txt
+```
+
+The resulting corpus is stored at:
+
+```text
+data/processed/corpus_raw.json
+```
+
+This extraction and validation stage is completed before introducing DVC versioning for the dataset and pipeline artifacts.

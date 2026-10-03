@@ -1,9 +1,9 @@
 stages:
   extract_articles:
-    cmd: python scripts/run_pipeline.py --input data/raw/egyptian_civil_code.pdf --output data/processed/civil_code_articles.json
+    cmd: uv run python scripts/prepare_corpus.py
     deps:
       - data/raw/egyptian_civil_code.pdf
-      - scripts/run_pipeline.py
-      - src/extraction/
+      - scripts/prepare_corpus.py
+      - scripts/corpus_helpers.py
     outs:
-      - data/processed/civil_code_articles.json
+      - data/processed/corpus_raw.json
