@@ -42,8 +42,8 @@ arabic-legal-rag/
 
 ### 1. Prerequisites
 
-* Python $\ge 3.10$
-* Git & DVC
+- Python $\ge 3.10$
+- Git & DVC
 
 ### 2. Environment Setup
 
@@ -132,9 +132,7 @@ The extracted output is formatted to match the required document specification:
   "source_page": 34,
   "citation": "Egyptian Civil Code, Article 147"
 }
-
 ```
-
 
 ## Corpus Extraction
 
@@ -142,10 +140,10 @@ The Egyptian Civil Code PDF was processed to create a structured, article-level 
 
 ### Source Document
 
-* **Input:** `data/raw/egyptian_civil_code.pdf`
-* **Format:** Bilingual Arabic/English PDF
-* **Length:** 170 pages
-* **Target:** Extract the Civil Code article-by-article while preserving the surrounding legal hierarchy and source-page information.
+- **Input:** `data/raw/egyptian_civil_code.pdf`
+- **Format:** Bilingual Arabic/English PDF
+- **Length:** 170 pages
+- **Target:** Extract the Civil Code article-by-article while preserving the surrounding legal hierarchy and source-page information.
 
 ### Extraction Process
 
@@ -155,12 +153,12 @@ The extraction pipeline:
 2. Detects article headers from the English article numbering in the PDF.
 3. Converts Arabic-Indic article numbers into normalized integer article numbers.
 4. Associates each article with its surrounding:
+   - Book
+   - Chapter
+   - Section
+   - Arabic topic
+   - English topic
 
-   * Book
-   * Chapter
-   * Section
-   * Arabic topic
-   * English topic
 5. Extracts the Arabic and English text belonging to each article.
 6. Records the original PDF page containing the article.
 7. Marks articles belonging to repealed ranges.
@@ -186,8 +184,8 @@ topic_en
 
 The source document explicitly identifies the following article ranges as repealed:
 
-* Articles **54–80**
-* Articles **389–417**
+- Articles **54–80**
+- Articles **389–417**
 
 These ranges are retained in the corpus with `is_repealed: true` so that the original legal numbering is preserved while allowing downstream retrieval and filtering to distinguish active provisions from repealed ones.
 
@@ -195,11 +193,11 @@ These ranges are retained in the corpus with `is_repealed: true` so that the ori
 
 The latest corpus extraction produced:
 
-* **1,149 article-level records**
-* **1,094 detected English article headers**
-* **1,093 expected active articles** after accounting for the repealed ranges
-* Arabic and English article text stored separately where available
-* Source PDF page numbers preserved for traceability
+- **1,149 article-level records**
+- **1,094 detected English article headers**
+- **1,093 expected active articles** after accounting for the repealed ranges
+- Arabic and English article text stored separately where available
+- Source PDF page numbers preserved for traceability
 
 The corpus is represented at the **article level**, rather than as one large block of extracted PDF text. This structure is intended to support precise legal retrieval, citation, filtering, and later RAG evaluation.
 
@@ -209,12 +207,12 @@ After extraction, a validation script was used to check the generated corpus aga
 
 The validation checks include:
 
-* Expected fields are present.
-* Article numbers are normalized correctly.
-* Repealed ranges are marked correctly.
-* Article records can be traced back to PDF pages.
-* Arabic and English text are extracted where available.
-* Random article samples are inspected against the original PDF.
+- Expected fields are present.
+- Article numbers are normalized correctly.
+- Repealed ranges are marked correctly.
+- Article records can be traced back to PDF pages.
+- Arabic and English text are extracted where available.
+- Random article samples are inspected against the original PDF.
 
 The validation script is run with:
 
@@ -236,7 +234,7 @@ RESULT: PASS
 
 One source-level limitation was identified during validation:
 
-* **Article 1022:** Arabic text is absent from the source PDF.
+- **Article 1022:** Arabic text is absent from the source PDF.
 
 This is reported as a warning rather than an extraction error because the Arabic text is not present in the source document.
 
@@ -273,3 +271,80 @@ Data and pipelines are up to date.
 This confirms that the tracked source document, extraction pipeline, and generated corpus are synchronized and reproducible.
 
 The corpus extraction and validation stage is therefore complete and ready for the next RAG pipeline stage: **article-level chunking, embedding generation, and vector-store indexing**.
+
+### Article-Level Chunking
+
+After corpus extraction and validation, the structured article-level corpus is converted into embedding-ready documents.
+
+The chunking stage uses the validated corpus:
+
+```text
+data/processed/corpus_raw.json
+```
+
+Each legal article is preserved as **one logical chunk** rather than splitting Arabic and English into separate chunks. This keeps the bilingual versions of the same legal provision together and preserves article-level traceability for retrieval and citations.
+
+For each article, the chunk contains:
+
+* Article citation
+* English topic
+* Arabic topic
+* English legal text
+* Arabic legal text
+
+The corresponding metadata is preserved separately:
+
+```text
+article_number
+citation
+source_page
+book
+chapter
+section
+topic_ar
+topic_en
+is_repealed
+```
+
+A simplified chunk has the following structure:
+
+```json
+{
+  "text": "Egyptian Civil Code, Article 1\n\nTopic: Laws and Rights\n\nالموضوع: القانون والحق\n\nEnglish:\n...\n\nالعربية:\n...",
+  "metadata": {
+    "article_number": 1,
+    "citation": "Egyptian Civil Code, Article 1",
+    "source_page": 1,
+    "book": null,
+    "chapter": null,
+    "section": "Laws and their Applications",
+    "topic_ar": "القانون والحق",
+    "topic_en": "Laws and Rights",
+    "is_repealed": false
+  }
+}
+```
+
+The chunking implementation is located at:
+
+```text
+src/ingestion/chunker.py
+```
+
+The main functions are:
+
+```text
+build_chunk()
+build_chunks()
+```
+
+`build_chunk()` converts one article into an embedding-ready document, while `build_chunks()` processes the complete corpus.
+
+The original extracted corpus is not modified during this stage. The chunking layer provides a separate representation that can be passed to the embedding and vector-store stages.
+
+The chunking design intentionally preserves the original article boundaries so that retrieved documents can later be mapped directly to legal citations such as:
+
+```text
+Egyptian Civil Code, Article 1
+```
+
