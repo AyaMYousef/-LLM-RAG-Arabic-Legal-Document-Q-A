@@ -161,7 +161,6 @@ The extraction pipeline:
    * Section
    * Arabic topic
    * English topic
-   
 5. Extracts the Arabic and English text belonging to each article.
 6. Records the original PDF page containing the article.
 7. Marks articles belonging to repealed ranges.
@@ -196,13 +195,13 @@ These ranges are retained in the corpus with `is_repealed: true` so that the ori
 
 The latest corpus extraction produced:
 
-* **1,149 article records**
+* **1,149 article-level records**
 * **1,094 detected English article headers**
 * **1,093 expected active articles** after accounting for the repealed ranges
-* Arabic and English article text are stored separately
-* Source PDF page numbers are preserved for traceability
+* Arabic and English article text stored separately where available
+* Source PDF page numbers preserved for traceability
 
-The corpus is therefore represented at the **article level**, rather than as one large block of extracted PDF text. This structure is intended to support precise legal retrieval, citation, filtering, and later RAG evaluation.
+The corpus is represented at the **article level**, rather than as one large block of extracted PDF text. This structure is intended to support precise legal retrieval, citation, filtering, and later RAG evaluation.
 
 ### Validation
 
@@ -217,17 +216,29 @@ The validation checks include:
 * Arabic and English text are extracted where available.
 * Random article samples are inspected against the original PDF.
 
-The validation report is generated with:
+The validation script is run with:
 
 ```bash
 uv run python scripts/validate_corpus.py
 ```
 
-To save the validation output as a text file:
+The validation output is also saved to:
 
-```bash
-uv run python scripts/validate_corpus.py | tee reports/validation_report.txt
+```text
+reports/corpus_validation.txt
 ```
+
+The latest validation result is:
+
+```text
+RESULT: PASS
+```
+
+One source-level limitation was identified during validation:
+
+* **Article 1022:** Arabic text is absent from the source PDF.
+
+This is reported as a warning rather than an extraction error because the Arabic text is not present in the source document.
 
 The resulting corpus is stored at:
 
@@ -235,4 +246,30 @@ The resulting corpus is stored at:
 data/processed/corpus_raw.json
 ```
 
-This extraction and validation stage is completed before introducing DVC versioning for the dataset and pipeline artifacts.
+### DVC Versioning and Reproducibility
+
+The source PDF and corpus extraction pipeline are tracked with DVC.
+
+The extraction pipeline is defined in `dvc.yaml` and tracks the PDF, extraction scripts, and generated corpus as pipeline dependencies and outputs.
+
+The extraction stage can be reproduced with:
+
+```bash
+dvc repro
+```
+
+The current DVC state can be checked with:
+
+```bash
+dvc status
+```
+
+The repository has been verified to return:
+
+```text
+Data and pipelines are up to date.
+```
+
+This confirms that the tracked source document, extraction pipeline, and generated corpus are synchronized and reproducible.
+
+The corpus extraction and validation stage is therefore complete and ready for the next RAG pipeline stage: **article-level chunking, embedding generation, and vector-store indexing**.
