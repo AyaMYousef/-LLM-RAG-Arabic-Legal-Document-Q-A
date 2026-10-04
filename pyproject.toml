@@ -26,6 +26,8 @@ dependencies = [
     "ragas==0.4.3",
     "langchain-community<0.4",
     "openai>=3.3.0",
+    "python-dotenv>=1.2.3",
+    "requests>=2.34.2",
 ]
 
 [project.optional-dependencies]

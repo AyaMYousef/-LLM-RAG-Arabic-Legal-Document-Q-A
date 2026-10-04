@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
@@ -12,6 +12,8 @@ import os
 from src.rag.api_generator import APIGenerator
 from src.rag.mock_generator import MockGenerator
 
+
+load_dotenv()
 
 app = FastAPI(
     title="Egyptian Civil Code RAG API",
@@ -26,10 +28,8 @@ def create_generator():
     generator_type = os.getenv("GENERATOR", "mock").lower()
 
     if generator_type == "api":
-        model = os.environ["LLM_MODEL"]
-
         return APIGenerator(
-            model=model,
+            model=os.environ["LLM_MODEL"],
         )
 
     if generator_type == "mock":
