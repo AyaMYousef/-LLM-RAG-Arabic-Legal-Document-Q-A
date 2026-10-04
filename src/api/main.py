@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 from src.rag.context_builder import build_context
+from src.rag.mock_generator import MockGenerator
+from src.rag.prompt_builder import SYSTEM_PROMPT, build_prompt
 from src.rag.retriever import Retriever
 
 
@@ -14,6 +16,7 @@ app = FastAPI(
 
 
 retriever = Retriever()
+generator = MockGenerator()
 
 
 class AskRequest(BaseModel):
@@ -44,6 +47,12 @@ def ask(request: AskRequest) -> AskResponse:
     results = retriever.search(request.question, k=5)
 
     context = build_context(results)
+    user_prompt = build_prompt(request.question, context)
+
+    answer = generator.generate(
+        SYSTEM_PROMPT,
+        user_prompt,
+    )
 
     sources = [
         Source(
@@ -55,9 +64,6 @@ def ask(request: AskRequest) -> AskResponse:
     ]
 
     return AskResponse(
-        answer=(
-            "LLM generation is not connected yet. "
-            "Retrieved legal context is ready for generation."
-        ),
+        answer=answer,
         sources=sources,
     )
