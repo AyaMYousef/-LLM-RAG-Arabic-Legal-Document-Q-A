@@ -679,3 +679,212 @@ LLM-Ready Context
 ```
 
 The LLM generation layer has intentionally not yet been added. The next stage is to build the prompt layer and connect an LLM that generates a grounded answer with article-level sources.
+
+
+## Vector Index and Reproducibility
+
+After preparing and validating the structured legal corpus, the next step is to build the semantic retrieval index.
+
+The project uses the multilingual E5 embedding model:
+
+```text
+intfloat/multilingual-e5-base
+```
+
+The corpus is converted into article-level chunks, and each article is embedded using the E5 model. The resulting embeddings are stored in a FAISS vector index together with the corresponding article metadata.
+
+### Build the E5 Vector Index
+
+Run:
+
+```bash
+uv run python scripts/build_e5_index.py
+```
+
+The script:
+
+1. Loads `data/processed/corpus_raw.json`.
+2. Builds article-level chunks.
+3. Loads `intfloat/multilingual-e5-base`.
+4. Generates normalized 768-dimensional embeddings using the `passage:` E5 prefix.
+5. Builds a FAISS index.
+6. Stores the index and metadata under:
+
+```text
+data/processed/vector_store_e5/
+```
+
+The generated vector store contains:
+
+```text
+data/processed/vector_store_e5/
+├── index.faiss
+└── metadata.json
+```
+
+### Reproducibility Across Machines
+
+The FAISS vector store is a generated artifact and is not guaranteed to exist after cloning the repository on a new machine.
+
+If the project is cloned onto another machine and the following file is missing:
+
+```text
+data/processed/vector_store_e5/index.faiss
+```
+
+rebuild the index using:
+
+```bash
+uv run python scripts/build_e5_index.py
+```
+
+The source of truth remains:
+
+```text
+data/processed/corpus_raw.json
+```
+
+Therefore, the vector index can be regenerated from the structured corpus whenever required.
+
+### Retrieval Validation
+
+The generated index is used by the RAG retriever to perform semantic search over the Egyptian Civil Code.
+
+The retrieval pipeline has been evaluated using a set of legal questions with known expected article numbers. The current E5 baseline achieved approximately:
+
+* Recall@1: 75%
+* Recall@3: 85%
+* Recall@5: 90%
+* MRR: 0.80
+
+This establishes the semantic retrieval layer before connecting an LLM for answer generation.
+
+### Important Setup Note
+
+The embedding model is downloaded automatically by `sentence-transformers` the first time the index is built on a new machine. A Hugging Face account/token is not required for normal model download, although unauthenticated requests may have lower rate limits.
+
+The vector index is therefore treated as a reproducible generated artifact rather than a manually maintained dataset.
+
+
+## RAG Retrieval API
+
+After preparing the legal corpus and building the E5 vector index, the project exposes the retrieval pipeline through a FastAPI service.
+
+### API Components
+
+The API connects the following components:
+
+```text
+User Question
+      ↓
+FastAPI /ask
+      ↓
+Retriever
+      ↓
+Multilingual E5 Embeddings
+      ↓
+FAISS Vector Store
+      ↓
+Top-K Legal Articles
+      ↓
+Context Builder
+      ↓
+Article Sources
+```
+
+The current API focuses on **retrieval and source grounding**. LLM generation is intentionally not connected yet.
+
+### Start the API
+
+Run:
+
+```bash
+uv run uvicorn src.api.main:app --reload
+```
+
+The API is available locally at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Interactive API documentation is available through the FastAPI Swagger UI.
+
+### Health Check
+
+The `GET /health` endpoint verifies that the API and vector store are available.
+
+Example response:
+
+```json
+{
+  "status": "healthy",
+  "documents_indexed": 1149
+}
+```
+
+This confirms that the FAISS vector store contains all 1,149 article-level records.
+
+### Ask Endpoint
+
+The `POST /ask` endpoint accepts a legal question:
+
+```json
+{
+  "question": "ماذا يحدث إذا لم يوجد نص تشريعي يمكن تطبيقه؟"
+}
+```
+
+The endpoint retrieves the five most relevant legal articles and returns their article numbers, citations, and source pages.
+
+Example response:
+
+```json
+{
+  "answer": "LLM generation is not connected yet. Retrieved legal context is ready for generation.",
+  "sources": [
+    {
+      "article_number": 1,
+      "citation": "Egyptian Civil Code, Article 1",
+      "source_page": 1
+    },
+    {
+      "article_number": 200,
+      "citation": "Egyptian Civil Code, Article 200",
+      "source_page": 24
+    },
+    {
+      "article_number": 27,
+      "citation": "Egyptian Civil Code, Article 27",
+      "source_page": 4
+    },
+    {
+      "article_number": 2,
+      "citation": "Egyptian Civil Code, Article 2",
+      "source_page": 1
+    },
+    {
+      "article_number": 23,
+      "citation": "Egyptian Civil Code, Article 23",
+      "source_page": 4
+    }
+  ]
+}
+```
+
+For this test question, **Article 1 is retrieved as the top result**, which is the expected legal provision.
+
+### Current RAG Status
+
+At this stage, the project has a working retrieval API:
+
+* Structured bilingual Egyptian Civil Code corpus
+* Article-level chunks
+* Multilingual E5 embeddings
+* FAISS semantic search
+* Top-K retrieval
+* Context construction
+* Article-level source citations
+* FastAPI `/health` endpoint
+* FastAPI `/ask` endpoint
+
