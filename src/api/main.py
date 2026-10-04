@@ -7,6 +7,10 @@ from src.rag.context_builder import build_context
 from src.rag.mock_generator import MockGenerator
 from src.rag.prompt_builder import SYSTEM_PROMPT, build_prompt
 from src.rag.retriever import Retriever
+import os
+
+from src.rag.api_generator import APIGenerator
+from src.rag.mock_generator import MockGenerator
 
 
 app = FastAPI(
@@ -16,7 +20,27 @@ app = FastAPI(
 
 
 retriever = Retriever()
-generator = MockGenerator()
+
+
+def create_generator():
+    generator_type = os.getenv("GENERATOR", "mock").lower()
+
+    if generator_type == "api":
+        model = os.environ["LLM_MODEL"]
+
+        return APIGenerator(
+            model=model,
+        )
+
+    if generator_type == "mock":
+        return MockGenerator()
+
+    raise ValueError(
+        f"Unsupported GENERATOR value: {generator_type}"
+    )
+
+
+generator = create_generator()
 
 
 class AskRequest(BaseModel):

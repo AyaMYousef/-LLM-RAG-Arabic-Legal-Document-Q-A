@@ -23,6 +23,9 @@ dependencies = [
     "faiss-cpu>=1.15.1",
     "fastapi>=0.142.2",
     "uvicorn>=0.54.0",
+    "ragas==0.4.3",
+    "langchain-community<0.4",
+    "openai>=3.3.0",
 ]
 
 [project.optional-dependencies]
