@@ -18,3 +18,4 @@ data/processed/*
 .vscode/
 .idea/
 .DS_Store.env
+.env
