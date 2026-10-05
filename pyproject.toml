@@ -29,6 +29,7 @@ dependencies = [
     "python-dotenv>=1.2.3",
     "requests>=2.34.2",
     "mlflow>=3.16.1",
+    "langfuse>=4.17.0",
 ]
 
 [project.optional-dependencies]
