@@ -31,6 +31,7 @@ dependencies = [
     "mlflow>=3.16.1",
     "langfuse>=4.17.0",
     "bentoml>=1.4.39",
+    "prometheus-fastapi-instrumentator>=8.1.0",
 ]
 
 [project.optional-dependencies]

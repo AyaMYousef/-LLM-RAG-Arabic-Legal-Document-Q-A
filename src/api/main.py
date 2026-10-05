@@ -7,11 +7,21 @@ from src.rag.context_builder import build_context
 from src.rag.mock_generator import MockGenerator
 from src.rag.prompt_builder import SYSTEM_PROMPT, build_prompt
 from src.rag.retriever import Retriever
+
+import time
+
+from src.monitoring.metrics import (
+    rag_errors_total,
+    rag_llm_latency_seconds,
+    rag_requests_total,
+    rag_retrieval_latency_seconds,
+)
+
 import os
 from langfuse import get_client
 from src.rag.api_generator import APIGenerator
 from src.rag.mock_generator import MockGenerator
-
+from prometheus_fastapi_instrumentator import Instrumentator
 
 load_dotenv()
 langfuse = get_client()
@@ -21,6 +31,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
+Instrumentator().instrument(app).expose(app)
 
 retriever = Retriever()
 
@@ -69,99 +80,118 @@ def health() -> dict:
 
 @app.post("/ask", response_model=AskResponse)
 def ask(request: AskRequest) -> AskResponse:
-    with langfuse.start_as_current_observation(
-        as_type="span",
-        name="rag-ask",
-        input={"question": request.question},
-    ) as trace:
+    rag_requests_total.inc()
 
-        # -------------------------
-        # Retrieval
-        # -------------------------
+    try:
         with langfuse.start_as_current_observation(
             as_type="span",
-            name="retrieval",
-            input={"question": request.question, "top_k": 5},
-        ) as retrieval_span:
+            name="rag-ask",
+            input={"question": request.question},
+        ) as trace:
 
-            results = retriever.search(request.question, k=5)
+            # -------------------------
+            # Retrieval
+            # -------------------------
+            retrieval_start = time.perf_counter()
 
-            articles = [
-                result["metadata"]["article_number"]
-                for result in results
-            ]
+            with langfuse.start_as_current_observation(
+                as_type="span",
+                name="retrieval",
+                input={"question": request.question, "top_k": 5},
+            ) as retrieval_span:
 
-            print("ASK RETRIEVAL:")
-            for result in results:
-                print(
-                    result["metadata"]["article_number"],
-                    result.get("score"),
+                results = retriever.search(request.question, k=5)
+
+                articles = [
+                    result["metadata"]["article_number"]
+                    for result in results
+                ]
+
+                print("ASK RETRIEVAL:")
+                for result in results:
+                    print(
+                        result["metadata"]["article_number"],
+                        result.get("score"),
+                    )
+
+                retrieval_span.update(
+                    output={
+                        "articles": articles,
+                        "scores": [
+                            result.get("score")
+                            for result in results
+                        ],
+                    }
                 )
 
-            retrieval_span.update(
+            rag_retrieval_latency_seconds.observe(
+                time.perf_counter() - retrieval_start
+            )
+
+            # -------------------------
+            # Prompt construction
+            # -------------------------
+            context = build_context(results)
+            user_prompt = build_prompt(
+                request.question,
+                context,
+            )
+
+            # -------------------------
+            # LLM generation
+            # -------------------------
+            llm_start = time.perf_counter()
+
+            with langfuse.start_as_current_observation(
+                as_type="generation",
+                name="llm-generation",
+                model=os.environ["LLM_MODEL"],
+                input={
+                    "system_prompt": SYSTEM_PROMPT,
+                    "user_prompt": user_prompt,
+                },
+            ) as generation:
+
+                answer = generator.generate(
+                    SYSTEM_PROMPT,
+                    user_prompt,
+                )
+
+                generation.update(
+                    output=answer,
+                )
+
+            rag_llm_latency_seconds.observe(
+                time.perf_counter() - llm_start
+            )
+
+            # -------------------------
+            # Final trace output
+            # -------------------------
+            trace.update(
                 output={
-                    "articles": articles,
-                    "scores": [
-                        result.get("score")
-                        for result in results
-                    ],
+                    "answer": answer,
+                    "retrieved_articles": articles,
                 }
             )
 
-        # -------------------------
-        # Prompt construction
-        # -------------------------
-        context = build_context(results)
-        user_prompt = build_prompt(
-            request.question,
-            context,
-        )
+            sources = [
+                Source(
+                    article_number=result["metadata"]["article_number"],
+                    citation=result["metadata"]["citation"],
+                    source_page=result["metadata"].get("source_page"),
+                )
+                for result in results
+            ]
 
-        # -------------------------
-        # LLM generation
-        # -------------------------
-        with langfuse.start_as_current_observation(
-            as_type="generation",
-            name="llm-generation",
-            model=os.environ["LLM_MODEL"],
-            input={
-                "system_prompt": SYSTEM_PROMPT,
-                "user_prompt": user_prompt,
-            },
-        ) as generation:
-
-            answer = generator.generate(
-                SYSTEM_PROMPT,
-                user_prompt,
+            return AskResponse(
+                answer=answer,
+                sources=sources,
             )
 
-            generation.update(
-                output=answer,
-            )
-
-        # -------------------------
-        # Final trace output
-        # -------------------------
-        trace.update(
-            output={
-                "answer": answer,
-                "retrieved_articles": articles,
-            }
-        )
-
-        sources = [
-            Source(
-                article_number=result["metadata"]["article_number"],
-                citation=result["metadata"]["citation"],
-                source_page=result["metadata"].get("source_page"),
-            )
-            for result in results
-        ]
-
-        return AskResponse(
-            answer=answer,
-            sources=sources,
-        )
+    except Exception:
+        rag_errors_total.inc()
+        raise
 
     @app.on_event("shutdown")
     def shutdown_event():
