@@ -7,7 +7,14 @@ from src.rag.context_builder import build_context
 from src.rag.mock_generator import MockGenerator
 from src.rag.prompt_builder import SYSTEM_PROMPT, build_prompt
 from src.rag.retriever import Retriever
-
+from fastapi import HTTPException
+from src.guardrails.input_guard import validate_input
+from src.guardrails.output_guard import validate_output
+from src.guardrails.pii import redact_pii
+from src.guardrails.metrics import (
+    guardrail_decisions_total,
+    guardrail_latency_seconds,
+)
 import time
 
 from src.monitoring.metrics import (
@@ -82,6 +89,16 @@ def health() -> dict:
 def ask(request: AskRequest) -> AskResponse:
     rag_requests_total.inc()
 
+    valid, error_message = validate_input(request.question)
+
+    if not valid:
+        rag_errors_total.inc()
+
+        raise HTTPException(
+            status_code=400,
+            detail=error_message,
+        )
+
     try:
         with langfuse.start_as_current_observation(
             as_type="span",
@@ -152,14 +169,48 @@ def ask(request: AskRequest) -> AskResponse:
                 },
             ) as generation:
 
-                answer = generator.generate(
-                    SYSTEM_PROMPT,
-                    user_prompt,
+               answer = generator.generate(
+                SYSTEM_PROMPT,
+                user_prompt,
+            )
+
+            pii_start = time.perf_counter()
+
+            answer, detected_pii = redact_pii(answer)
+
+            guardrail_latency_seconds.labels(
+                guardrail="pii"
+            ).observe(
+                time.perf_counter() - pii_start
+            )
+
+            if detected_pii:
+                guardrail_decisions_total.labels(
+                    guardrail="pii",
+                    decision="redact",
+                ).inc()
+            else:
+                guardrail_decisions_total.labels(
+                    guardrail="pii",
+                    decision="allow",
+                ).inc()
+
+            valid, error_message = validate_output(
+                answer,
+                articles,
+            )
+
+            if not valid:
+                rag_errors_total.inc()
+
+                raise HTTPException(
+                    status_code=500,
+                    detail=error_message,
                 )
 
-                generation.update(
-                    output=answer,
-                )
+            generation.update(
+                output=answer,
+            )
 
             rag_llm_latency_seconds.observe(
                 time.perf_counter() - llm_start

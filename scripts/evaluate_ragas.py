@@ -11,6 +11,7 @@ from ragas.dataset_schema import EvaluationDataset, SingleTurnSample
 from ragas.llms import llm_factory
 from ragas.embeddings.base import BaseRagasEmbeddings
 from ragas.metrics import (
+    AnswerRelevancy,
     ContextPrecision,
     ContextRecall,
     Faithfulness,
@@ -94,12 +95,17 @@ def main() -> None:
     print(f"Loaded samples: {len(samples)}")
 
     evaluator_llm = create_evaluator_llm()
+    embeddings = E5RagasEmbeddings()
 
     metrics = [
-        Faithfulness(llm=evaluator_llm),
-        ContextPrecision(llm=evaluator_llm),
-        ContextRecall(llm=evaluator_llm),
-    ]
+    Faithfulness(llm=evaluator_llm),
+    ContextPrecision(llm=evaluator_llm),
+    ContextRecall(llm=evaluator_llm),
+    AnswerRelevancy(
+        llm=evaluator_llm,
+        embeddings=embeddings,
+    ),
+]
 
     dataset = EvaluationDataset(samples=samples)
 
@@ -108,7 +114,7 @@ def main() -> None:
     print("Evaluator model:", os.environ["LLM_MODEL"])
     print()
 
-    embeddings = E5RagasEmbeddings()
+  
 
     result = evaluate(
         dataset=dataset,
@@ -129,16 +135,19 @@ def main() -> None:
     output = {
         "num_samples": len(samples),
         "metrics": {
-            "faithfulness": float(
-                result_df["faithfulness"].mean()
-            ),
-            "context_precision": float(
-                result_df["context_precision"].mean()
-            ),
-            "context_recall": float(
-                result_df["context_recall"].mean()
-            ),
-        },
+        "faithfulness": float(
+            result_df["faithfulness"].mean()
+        ),
+        "context_precision": float(
+            result_df["context_precision"].mean()
+        ),
+        "context_recall": float(
+            result_df["context_recall"].mean()
+        ),
+        "answer_relevancy": float(
+            result_df["answer_relevancy"].mean()
+        ),
+    },
         "results": result_df.to_dict(orient="records"),
     }
 
