@@ -28,6 +28,7 @@ dependencies = [
     "openai>=3.3.0",
     "python-dotenv>=1.2.3",
     "requests>=2.34.2",
+    "mlflow>=3.16.1",
 ]
 
 [project.optional-dependencies]
