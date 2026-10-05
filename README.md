@@ -1495,3 +1495,79 @@ At this point:
 * **FastAPI** serves the RAG application.
 * **Langfuse** shows request-level RAG traces when `/ask` requests are processed.
 
+
+BentoML Serving
+
+BentoML was added to package the existing Arabic Legal RAG pipeline as a separately deployable service.
+
+The BentoML service reuses the existing:
+
+Multilingual E5 embedding model
+FAISS vector store
+Context builder
+Legal RAG prompt
+Configured LLM generator
+
+The existing FastAPI application remains available independently.
+
+Service Architecture
+                 Arabic Legal RAG
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+          ▼                         ▼
+      FastAPI                   BentoML
+       :8000                     :3000
+          │                         │
+          └────────────┬────────────┘
+                       │
+                       ▼
+                E5 + FAISS
+                       │
+                       ▼
+                Context Builder
+                       │
+                       ▼
+                   LLM API
+
+This separation allows the same RAG logic to be exposed through the original FastAPI application and packaged as a BentoML service.
+
+Installation
+
+BentoML was installed with:
+
+uv add bentoml
+
+The project currently uses:
+
+BentoML 1.4.39
+Service Location
+
+The BentoML service is located at:
+
+src/services/bentoml_service.py
+
+The service is named:
+
+LegalRAGService
+Start the BentoML Service
+
+From the project root:
+
+uv run bentoml serve src.services.bentoml_service:LegalRAGService
+
+The service runs on:
+
+http://127.0.0.1:3000
+Health Check
+
+BentoML exposes a health endpoint that can be checked with PowerShell:
+
+Invoke-WebRequest http://127.0.0.1:3000/healthz -UseBasicParsing
+
+A successful response returns:
+
+StatusCode : 200
+StatusDescription : OK
+
+This confirms that the BentoML service has initialized successfully.

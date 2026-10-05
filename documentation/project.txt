@@ -1145,4 +1145,129 @@ For example, after changing the retrieval strategy, a new RAGAS evaluation can b
 
 MLflow provides experiment tracking for the RAG pipeline. It allows evaluation results and configuration parameters to be recorded consistently across iterations, making it possible to determine whether a change actually improves the system rather than relying on manual comparison of JSON files.
 
+## BentoML Serving
+
+BentoML was added to package the existing Arabic Legal RAG pipeline as a separately deployable service.
+
+The BentoML service reuses the existing:
+
+* Multilingual E5 embedding model
+* FAISS vector store
+* Context builder
+* Legal RAG prompt
+* Configured LLM generator
+
+The existing FastAPI application remains available independently.
+
+### Service Architecture
+
+```text
+                 Arabic Legal RAG
+                       │
+          ┌────────────┴────────────┐
+          │                         │
+          ▼                         ▼
+      FastAPI                   BentoML
+       :8000                     :3000
+          │                         │
+          └────────────┬────────────┘
+                       │
+                       ▼
+                E5 + FAISS
+                       │
+                       ▼
+                Context Builder
+                       │
+                       ▼
+                   LLM API
+```
+
+This separation allows the same RAG logic to be exposed through the original FastAPI application and packaged as a BentoML service.
+
+### Installation
+
+BentoML was installed with:
+
+```powershell
+uv add bentoml
+```
+
+The project currently uses:
+
+```text
+BentoML 1.4.39
+```
+
+### Service Location
+
+The BentoML service is located at:
+
+```text
+src/services/bentoml_service.py
+```
+
+The service is named:
+
+```text
+LegalRAGService
+```
+
+### Start the BentoML Service
+
+From the project root:
+
+```powershell
+uv run bentoml serve src.services.bentoml_service:LegalRAGService
+```
+
+The service runs on:
+
+```text
+http://127.0.0.1:3000
+```
+
+### Health Check
+
+BentoML exposes a health endpoint that can be checked with PowerShell:
+
+```powershell
+Invoke-WebRequest http://127.0.0.1:3000/healthz -UseBasicParsing
+```
+
+A successful response returns:
+
+```text
+StatusCode : 200
+StatusDescription : OK
+```
+
+This confirms that the BentoML service has initialized successfully.
+
+### Why BentoML?
+
+BentoML provides a production-oriented serving layer around the RAG application. It separates model/service deployment from the development API and provides a path toward packaging and deploying the RAG system as an independent service.
+
+The current implementation intentionally keeps the deployment simple. It does not introduce a local LLM or GPU requirement. The configured LLM continues to use the existing API-based generation approach.
+
+### Current Deployment Boundary
+
+The BentoML service currently contains:
+
+```text
+LegalRAGService
+├── Retriever
+│   ├── E5 embeddings
+│   └── FAISS vector store
+│
+├── Context Builder
+│
+├── Prompt Builder
+│
+└── Generator
+    └── Configured LLM API
+```
+
+The FastAPI application and BentoML service are independent entry points, while both use the same underlying RAG components.
+
+> Note: Actual LLM generation depends on the configured API provider and its available quota. BentoML service health can be verified independently of LLM availability.
 
