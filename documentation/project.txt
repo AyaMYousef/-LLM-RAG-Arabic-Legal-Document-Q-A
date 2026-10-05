@@ -888,3 +888,134 @@ At this stage, the project has a working retrieval API:
 * FastAPI `/health` endpoint
 * FastAPI `/ask` endpoint
 
+## Current RAG Serving and Generation Stage
+
+The current implementation provides an end-to-end RAG question-answering pipeline:
+
+```text
+User Question
+     ↓
+FastAPI /ask
+     ↓
+E5 Query Embedding
+     ↓
+FAISS Vector Search
+     ↓
+Retrieved Legal Context
+     ↓
+Grounded Prompt
+     ↓
+API-based LLM
+     ↓
+Answer + Legal Sources
+```
+
+### API-based LLM
+
+The project currently uses an OpenAI-compatible API rather than running a local generative model. This keeps the initial implementation lightweight and avoids requiring a GPU.
+
+The generator is selected through the `.env` configuration:
+
+```env
+GENERATOR=api
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_API_KEY=<GROQ_API_KEY>
+LLM_MODEL=qwen/qwen3.8-27b
+```
+
+The application uses the same `Generator` interface for both mock and API-based generation. This allows the LLM provider to be changed later without changing the RAG pipeline.
+
+The API generator sends:
+
+* a system prompt containing the legal grounding rules
+* a user prompt containing the retrieved legal context and question
+* `temperature=0.0` for deterministic generation
+* a maximum response length of 800 tokens
+
+### Grounded Legal Generation
+
+The system prompt explicitly restricts the model to the retrieved legal context.
+
+The model is instructed to:
+
+* answer only from the retrieved Egyptian Civil Code context
+* avoid using outside legal knowledge
+* identify the relevant article
+* explicitly cite the article number
+* answer Arabic questions in Arabic
+* state when the retrieved context is insufficient
+
+This is important because legal hallucinations are unacceptable for the intended use case.
+
+### Current Retrieval Baseline
+
+The corpus contains **1,149 indexed records** from the Egyptian Civil Code.
+
+The current retriever uses:
+
+```text
+Embedding model: intfloat/multilingual-e5-base
+Embedding dimension: 768
+Vector store: FAISS
+Query format: query: <question>
+Top-k: 5
+```
+
+The original retrieval evaluation produced:
+
+| Metric   | Result |
+| -------- | -----: |
+| Recall@1 | 0.7500 |
+| Recall@3 | 0.8500 |
+| Recall@5 | 0.9000 |
+| MRR      | 0.8042 |
+
+### Known Retrieval Issue
+
+During API testing, a discrepancy was identified between the expected standalone retrieval results and the results returned through the running `/ask` endpoint.
+
+For example, the question:
+
+```text
+ماذا يحدث إذا لم يوجد نص تشريعي يمكن تطبيقه؟
+```
+
+should retrieve **Article 1**, which states the applicable order of legal sources when no applicable legislative provision exists.
+
+The standalone retrieval previously returned Article 1 among the highest-ranked results, while the running API returned unrelated articles.
+
+The following items have already been verified:
+
+* the API is running from the project root
+* the configured vector-store path resolves to `data/processed/vector_store_e5`
+* the vector store exists
+* the index contains 1,149 records
+* the retriever explicitly uses `intfloat/multilingual-e5-base`
+
+The exact cause of the API/standalone retrieval discrepancy is still under investigation.
+
+**This issue does not block the next MLOps stages.** It will be fixed before the final retrieval/RAGAS comparison, and the evaluation will be rerun after the fix.
+
+### Current Project Strategy
+
+The project intentionally starts with an API-based LLM because the main objective at this stage is to implement and evaluate the MLOps pipeline rather than spend time setting up local GPU inference.
+
+The generative serving stack will be optimized later:
+
+```text
+Current:
+API-based LLM
+      ↓
+RAG evaluation + observability
+
+Later:
+vLLM
+      ↓
+AWQ-4bit quantization
+      ↓
+Offline/local inference
+      ↓
+Original vs quantized comparison
+```
+
+This separation allows evaluation, monitoring, tracing, and deployment components to be developed before introducing the additional complexity of local LLM serving.

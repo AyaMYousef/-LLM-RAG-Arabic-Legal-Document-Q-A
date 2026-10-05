@@ -1,0 +1,1093 @@
+Here is a concise `README.md` documenting everything built so far, serving as an onboarding and execution guide for your project repository.
+
+---
+
+# Arabic Legal Document Q&A (RAG) — Phase 1: Ingestion & Extraction
+
+A production-ready RAG pipeline built for querying bilingual Arabic/English legal corpora—specifically the **Egyptian Civil Code (Law of 1948)**. This repository houses Phase 1: converting raw, unstructured, two-column PDF documents into clean, structured, and validated JSON data ready for vector database indexing.
+
+---
+
+## 🛠 Project Structure
+
+```text
+arabic-legal-rag/
+├── data/
+│   ├── raw/                  # Raw bilingual PDF (tracked by DVC)
+│   └── processed/            # Structured civil_code_articles.json (tracked by DVC)
+├── src/
+│   ├── __init__.py
+│   ├── extraction/
+│   │   ├── __init__.py
+│   │   ├── schema.py         # Pydantic v2 data models & validation
+│   │   ├── normalizer.py     # Arabic text, diacritics & numeral conversion
+│   │   └── pdf_parser.py     # Column-aware spatial PDF extractor
+│   └── utils/
+│       ├── __init__.py
+│       └── logger.py         # Structured pipeline logging
+├── tests/
+│   ├── test_normalizer.py    # Unit tests for text & digit normalization
+│   └── test_extraction.py    # Integration tests on sample pages
+├── scripts/
+│   └── run_pipeline.py       # Main ingestion runner
+├── .gitignore
+├── pyproject.toml            # PEP 621 dependencies & project metadata
+└── README.md
+
+```
+
+---
+
+## 🚀 Quickstart & Setup
+
+### 1. Prerequisites
+
+- Python $\ge 3.10$
+- Git & DVC
+
+### 2. Environment Setup
+
+Clone the repository, create a virtual environment, and install dependencies in editable mode:
+
+```bash
+# Clone the repository
+git clone https://github.com/AyaMYousef/-LLM-RAG-Arabic-Legal-Document-Q-A.git
+cd -LLM-RAG-Arabic-Legal-Document-Q-A
+
+# Create a virtual environment
+python -m venv .venv
+Activate the virtual environment
+
+Windows PowerShell:
+
+.\.venv\Scripts\Activate.ps1
+
+Windows Command Prompt:
+
+.venv\Scripts\activate.bat
+
+Linux / macOS:
+
+source .venv/bin/activate
+Install dependencies
+pip install -e ".[dev]"
+
+```
+
+### 3. Data Pull (DVC)
+
+Retrieve the raw PDF data managed by Data Version Control:
+
+```bash
+dvc pull
+
+```
+
+---
+
+## ⚙️ How the Ingestion Pipeline Works
+
+```text
+[Raw PDF] ──> Spatial Layout Extraction (PyMuPDF)
+          ──> Column Bounding-Box Separation (Left: EN / Right: AR)
+          ──> Numeral & Text Normalization (Arabic-Indic -> Western, Diacritics Removal)
+          ──> Hierarchy Tracking & Repealed Article Detection
+          ──> Validation against Schema (Pydantic v2) ──> [civil_code_articles.json]
+
+```
+
+### Key Technical Considerations
+
+1. **Two-Column Isolation:** Uses bounding-box coordinate slicing $(x_0, y_0, x_1, y_1)$ to prevent bilingual text interleaving.
+2. **Arabic Text Normalization:** Converts Arabic-Indic numerals (`١٤٧`) to Western integers (`147`), strips Tashkeel, and standardizes Alef/Hamza forms for consistent vector embeddings.
+3. **Legal Integrity:** Explicitly flags repealed articles (`is_repealed: true`) rather than deleting them, preventing vector database hallucination gaps.
+
+---
+
+## 🧪 Testing
+
+Run unit tests to verify normalization and parsing logic:
+
+```bash
+pytest
+
+```
+
+---
+
+## 📑 Target Data Schema
+
+The extracted output is formatted to match the required document specification:
+
+```json
+{
+  "article_number": 147,
+  "book": "Obligations or Personal Rights",
+  "chapter": "Sources of Obligations",
+  "section": "Contracts",
+  "topic": "The Effects of a Contract",
+  "text_ar": "العقد شريعة المتعاقدين، فلا يجوز نقضه ولا تعديله...",
+  "text_en": "The contract makes the law of the parties...",
+  "is_repealed": false,
+  "source_page": 34,
+  "citation": "Egyptian Civil Code, Article 147"
+}
+```
+
+## Corpus Extraction
+
+The Egyptian Civil Code PDF was processed to create a structured, article-level bilingual corpus for the legal RAG pipeline.
+
+### Source Document
+
+- **Input:** `data/raw/egyptian_civil_code.pdf`
+- **Format:** Bilingual Arabic/English PDF
+- **Length:** 170 pages
+- **Target:** Extract the Civil Code article-by-article while preserving the surrounding legal hierarchy and source-page information.
+
+### Extraction Process
+
+The extraction pipeline:
+
+1. Reads the PDF page by page using PyMuPDF.
+2. Detects article headers from the English article numbering in the PDF.
+3. Converts Arabic-Indic article numbers into normalized integer article numbers.
+4. Associates each article with its surrounding:
+   - Book
+   - Chapter
+   - Section
+   - Arabic topic
+   - English topic
+
+5. Extracts the Arabic and English text belonging to each article.
+6. Records the original PDF page containing the article.
+7. Marks articles belonging to repealed ranges.
+8. Writes the extracted corpus as structured JSON.
+
+The resulting records follow this schema:
+
+```text
+article_number
+book
+chapter
+section
+citation
+is_repealed
+source_page
+text_ar
+text_en
+topic_ar
+topic_en
+```
+
+### Repealed Articles
+
+The source document explicitly identifies the following article ranges as repealed:
+
+- Articles **54–80**
+- Articles **389–417**
+
+These ranges are retained in the corpus with `is_repealed: true` so that the original legal numbering is preserved while allowing downstream retrieval and filtering to distinguish active provisions from repealed ones.
+
+### Extraction Results
+
+The latest corpus extraction produced:
+
+- **1,149 article-level records**
+- **1,094 detected English article headers**
+- **1,093 expected active articles** after accounting for the repealed ranges
+- Arabic and English article text stored separately where available
+- Source PDF page numbers preserved for traceability
+
+The corpus is represented at the **article level**, rather than as one large block of extracted PDF text. This structure is intended to support precise legal retrieval, citation, filtering, and later RAG evaluation.
+
+### Validation
+
+After extraction, a validation script was used to check the generated corpus against the expected schema and article numbering.
+
+The validation checks include:
+
+- Expected fields are present.
+- Article numbers are normalized correctly.
+- Repealed ranges are marked correctly.
+- Article records can be traced back to PDF pages.
+- Arabic and English text are extracted where available.
+- Random article samples are inspected against the original PDF.
+
+The validation script is run with:
+
+```bash
+uv run python scripts/validate_corpus.py
+```
+
+The validation output is also saved to:
+
+```text
+reports/corpus_validation.txt
+```
+
+The latest validation result is:
+
+```text
+RESULT: PASS
+```
+
+One source-level limitation was identified during validation:
+
+- **Article 1022:** Arabic text is absent from the source PDF.
+
+This is reported as a warning rather than an extraction error because the Arabic text is not present in the source document.
+
+The resulting corpus is stored at:
+
+```text
+data/processed/corpus_raw.json
+```
+
+### DVC Versioning and Reproducibility
+
+The source PDF and corpus extraction pipeline are tracked with DVC.
+
+The extraction pipeline is defined in `dvc.yaml` and tracks the PDF, extraction scripts, and generated corpus as pipeline dependencies and outputs.
+
+The extraction stage can be reproduced with:
+
+```bash
+dvc repro
+```
+
+The current DVC state can be checked with:
+
+```bash
+dvc status
+```
+
+The repository has been verified to return:
+
+```text
+Data and pipelines are up to date.
+```
+
+This confirms that the tracked source document, extraction pipeline, and generated corpus are synchronized and reproducible.
+
+The corpus extraction and validation stage is therefore complete and ready for the next RAG pipeline stage: **article-level chunking, embedding generation, and vector-store indexing**.
+
+### Article-Level Chunking
+
+After corpus extraction and validation, the structured article-level corpus is converted into embedding-ready documents.
+
+The chunking stage uses the validated corpus:
+
+```text
+data/processed/corpus_raw.json
+```
+
+Each legal article is preserved as **one logical chunk** rather than splitting Arabic and English into separate chunks. This keeps the bilingual versions of the same legal provision together and preserves article-level traceability for retrieval and citations.
+
+For each article, the chunk contains:
+
+* Article citation
+* English topic
+* Arabic topic
+* English legal text
+* Arabic legal text
+
+The corresponding metadata is preserved separately:
+
+```text
+article_number
+citation
+source_page
+book
+chapter
+section
+topic_ar
+topic_en
+is_repealed
+```
+
+A simplified chunk has the following structure:
+
+```json
+{
+  "text": "Egyptian Civil Code, Article 1\n\nTopic: Laws and Rights\n\nالموضوع: القانون والحق\n\nEnglish:\n...\n\nالعربية:\n...",
+  "metadata": {
+    "article_number": 1,
+    "citation": "Egyptian Civil Code, Article 1",
+    "source_page": 1,
+    "book": null,
+    "chapter": null,
+    "section": "Laws and their Applications",
+    "topic_ar": "القانون والحق",
+    "topic_en": "Laws and Rights",
+    "is_repealed": false
+  }
+}
+```
+
+The chunking implementation is located at:
+
+```text
+src/ingestion/chunker.py
+```
+
+The main functions are:
+
+```text
+build_chunk()
+build_chunks()
+```
+
+`build_chunk()` converts one article into an embedding-ready document, while `build_chunks()` processes the complete corpus.
+
+The original extracted corpus is not modified during this stage. The chunking layer provides a separate representation that can be passed to the embedding and vector-store stages.
+
+The chunking design intentionally preserves the original article boundaries so that retrieved documents can later be mapped directly to legal citations such as:
+
+```text
+Egyptian Civil Code, Article 1
+```
+## Retrieval Baseline and Embedding Evaluation
+
+After article-level chunking, the corpus was evaluated using dense semantic retrieval with FAISS.
+
+### Embedding Models Evaluated
+
+Two multilingual embedding models were evaluated on the same 20-question legal retrieval benchmark:
+
+* `intfloat/multilingual-e5-base`
+* `sentence-transformers/paraphrase-multilingual-mpnet-base-v2`
+
+For E5, the recommended retrieval format was used:
+
+* Corpus passages: `passage: <text>`
+* User queries: `query: <text>`
+* Embeddings were L2-normalized before indexing.
+* FAISS `IndexFlatIP` was used, making inner product equivalent to cosine similarity for normalized vectors.
+
+### Retrieval Evaluation Dataset
+
+A fixed set of 20 Arabic legal questions was created from articles whose legal content could be directly verified in the extracted corpus.
+
+The benchmark measures:
+
+* **Recall@1** — expected article retrieved as the top result.
+* **Recall@3** — expected article appears within the top three results.
+* **Recall@5** — expected article appears within the top five results.
+* **MRR (Mean Reciprocal Rank)** — measures how highly the expected article is ranked.
+
+The same questions and expected article numbers are used for all embedding experiments to keep comparisons consistent.
+
+### Baseline Results
+
+| Embedding configuration  |   Recall@1 |   Recall@3 |   Recall@5 |        MRR |
+| ------------------------ | ---------: | ---------: | ---------: | ---------: |
+| MPNet + article metadata |     0.7500 |     0.9000 |     0.9000 |     0.8000 |
+| E5 + article metadata    | **0.7500** | **0.9000** | **0.9000** | **0.8167** |
+| E5 + legal text only     |     0.7500 |     0.8500 |     0.9000 |     0.8042 |
+
+### Embedding Text Experiment
+
+The initial chunk representation included:
+
+```text
+Article citation
+English topic
+Arabic topic
+English legal text
+Arabic legal text
+```
+
+During corpus inspection, hierarchy metadata errors were identified in some extracted records. For example, Article 802 correctly contains ownership law text, but its extracted `section` metadata incorrectly retained a heading from the preceding suretyship section.
+
+To determine whether this metadata was negatively affecting retrieval, a second E5 experiment embedded only:
+
+```text
+Article citation
+English legal text
+Arabic legal text
+```
+
+while retaining `book`, `chapter`, `section`, `topic_ar`, `topic_en`, `source_page`, and `is_repealed` as metadata.
+
+The legal-text-only configuration achieved:
+
+* Recall@1: **0.7500**
+* Recall@3: **0.8500**
+* Recall@5: **0.9000**
+* MRR: **0.8042**
+
+This did not improve retrieval on the current 20-question benchmark. Therefore, the current baseline retains the original E5 chunk representation, while hierarchy metadata remains available for citation and filtering.
+
+### Current Retrieval Baseline
+
+The current baseline is:
+
+```text
+Embedding model:
+intfloat/multilingual-e5-base
+
+Vector store:
+FAISS IndexFlatIP
+
+Embedding dimension:
+768
+
+Corpus:
+1,149 article-level chunks
+
+Evaluation:
+20-question benchmark
+
+Recall@1:
+0.7500
+
+Recall@3:
+0.9000
+
+Recall@5:
+0.9000
+
+MRR:
+0.8167
+```
+
+The retrieval benchmark is maintained as a reproducible evaluation step and can be reused when testing chunking strategies, embedding models, reranking, prompts, or other RAG components.
+
+## Retrieval and Context Preparation
+
+After corpus extraction and validation, the legal articles are indexed for semantic retrieval.
+
+### 1. Article-Level Chunking
+
+Each Civil Code article is kept as one logical chunk. The chunk contains the article citation and its English and Arabic legal text.
+
+The chunk metadata includes:
+
+* `article_number`
+* `citation`
+* `source_page`
+* `book`
+* `chapter`
+* `section`
+* `topic_ar`
+* `topic_en`
+* `is_repealed`
+
+The chunking implementation is located in:
+
+```text
+src/ingestion/chunker.py
+```
+
+This preserves the article as the primary retrieval unit and avoids splitting individual legal provisions across multiple chunks.
+
+### 2. Embedding Model
+
+Two multilingual embedding configurations were evaluated:
+
+* `sentence-transformers/paraphrase-multilingual-mpnet-base-v2`
+* `intfloat/multilingual-e5-base`
+
+The final retrieval baseline uses:
+
+```text
+intfloat/multilingual-e5-base
+```
+
+For E5 embeddings, the required prefixes are used:
+
+```text
+passage: <article text>
+query: <user question>
+```
+
+Embeddings are normalized before being indexed.
+
+### 3. FAISS Vector Index
+
+The article embeddings are stored using FAISS with:
+
+```text
+IndexFlatIP
+```
+
+Because the embeddings are normalized, inner-product search corresponds to cosine similarity.
+
+The generated E5 index is stored at:
+
+```text
+data/processed/vector_store_e5/
+```
+
+The index contains one vector per article-level chunk.
+
+The index-building script is:
+
+```text
+scripts/build_e5_index.py
+```
+
+The vector store implementation is:
+
+```text
+src/ingestion/vector_store.py
+```
+
+### 4. Retrieval Metadata
+
+The FAISS metadata stores both citation information and the legal text required by the downstream RAG pipeline.
+
+Each retrieved record contains:
+
+```text
+article_number
+citation
+source_page
+book
+chapter
+section
+topic_ar
+topic_en
+is_repealed
+text_en
+text_ar
+```
+
+Keeping the legal text with the indexed metadata means the RAG pipeline can build context directly from retrieval results without rereading `corpus_raw.json` for every question.
+
+### 5. Retrieval Baseline
+
+A fixed 20-question Arabic benchmark was used to compare embedding configurations.
+
+| Configuration            | Recall@1 | Recall@3 | Recall@5 |        MRR |
+| ------------------------ | -------: | -------: | -------: | ---------: |
+| MPNet + article metadata |     0.75 |     0.90 |     0.90 |     0.8000 |
+| E5 + article metadata    |     0.75 |     0.90 |     0.90 | **0.8167** |
+| E5 + legal text only     |     0.75 |     0.85 |     0.90 |     0.8042 |
+
+The current baseline is:
+
+```text
+Embedding model: intfloat/multilingual-e5-base
+Vector store: FAISS IndexFlatIP
+Recall@1: 0.75
+Recall@3: 0.90
+Recall@5: 0.90
+MRR: 0.8167
+```
+
+The benchmark and evaluation scripts are located in:
+
+```text
+scripts/evaluate_retrieval.py
+scripts/test_e5_retrieval.py
+```
+
+### 6. Retriever
+
+The retrieval layer is implemented in:
+
+```text
+src/rag/retriever.py
+```
+
+The retriever:
+
+1. Receives a user question.
+2. Adds the E5 `query:` prefix.
+3. Generates a normalized query embedding.
+4. Searches the FAISS index.
+5. Returns the top-k article records with similarity scores and metadata.
+
+For example:
+
+```text
+Question:
+ماذا يحدث إذا لم يوجد نص تشريعي يمكن تطبيقه؟
+
+Top result:
+Article 1
+Score: 0.8436
+```
+
+Article 1 is correctly retrieved as the first result for this query.
+
+### 7. Context Builder
+
+Retrieved articles are converted into an LLM-ready context by:
+
+```text
+src/rag/context_builder.py
+```
+
+The context contains:
+
+* article citation
+* PDF source page
+* English legal text
+* Arabic legal text
+
+Multiple retrieved articles are separated using a clear delimiter.
+
+Example structure:
+
+```text
+Egyptian Civil Code, Article 1
+PDF page: 1
+
+English:
+...
+
+العربية:
+...
+
+---
+
+Egyptian Civil Code, Article 200
+PDF page: 24
+
+English:
+...
+
+العربية:
+...
+```
+
+This creates the boundary between semantic retrieval and answer generation.
+
+### Current RAG Pipeline Status
+
+The following components are now complete and tested:
+
+```text
+PDF
+ ↓
+Structured Article Corpus
+ ↓
+Article-Level Chunks
+ ↓
+Multilingual E5 Embeddings
+ ↓
+FAISS Vector Index
+ ↓
+Semantic Retriever
+ ↓
+Retrieved Legal Text
+ ↓
+LLM-Ready Context
+```
+
+The LLM generation layer has intentionally not yet been added. The next stage is to build the prompt layer and connect an LLM that generates a grounded answer with article-level sources.
+
+
+## Vector Index and Reproducibility
+
+After preparing and validating the structured legal corpus, the next step is to build the semantic retrieval index.
+
+The project uses the multilingual E5 embedding model:
+
+```text
+intfloat/multilingual-e5-base
+```
+
+The corpus is converted into article-level chunks, and each article is embedded using the E5 model. The resulting embeddings are stored in a FAISS vector index together with the corresponding article metadata.
+
+### Build the E5 Vector Index
+
+Run:
+
+```bash
+uv run python scripts/build_e5_index.py
+```
+
+The script:
+
+1. Loads `data/processed/corpus_raw.json`.
+2. Builds article-level chunks.
+3. Loads `intfloat/multilingual-e5-base`.
+4. Generates normalized 768-dimensional embeddings using the `passage:` E5 prefix.
+5. Builds a FAISS index.
+6. Stores the index and metadata under:
+
+```text
+data/processed/vector_store_e5/
+```
+
+The generated vector store contains:
+
+```text
+data/processed/vector_store_e5/
+├── index.faiss
+└── metadata.json
+```
+
+### Reproducibility Across Machines
+
+The FAISS vector store is a generated artifact and is not guaranteed to exist after cloning the repository on a new machine.
+
+If the project is cloned onto another machine and the following file is missing:
+
+```text
+data/processed/vector_store_e5/index.faiss
+```
+
+rebuild the index using:
+
+```bash
+uv run python scripts/build_e5_index.py
+```
+
+The source of truth remains:
+
+```text
+data/processed/corpus_raw.json
+```
+
+Therefore, the vector index can be regenerated from the structured corpus whenever required.
+
+### Retrieval Validation
+
+The generated index is used by the RAG retriever to perform semantic search over the Egyptian Civil Code.
+
+The retrieval pipeline has been evaluated using a set of legal questions with known expected article numbers. The current E5 baseline achieved approximately:
+
+* Recall@1: 75%
+* Recall@3: 85%
+* Recall@5: 90%
+* MRR: 0.80
+
+This establishes the semantic retrieval layer before connecting an LLM for answer generation.
+
+### Important Setup Note
+
+The embedding model is downloaded automatically by `sentence-transformers` the first time the index is built on a new machine. A Hugging Face account/token is not required for normal model download, although unauthenticated requests may have lower rate limits.
+
+The vector index is therefore treated as a reproducible generated artifact rather than a manually maintained dataset.
+
+
+## RAG Retrieval API
+
+After preparing the legal corpus and building the E5 vector index, the project exposes the retrieval pipeline through a FastAPI service.
+
+### API Components
+
+The API connects the following components:
+
+```text
+User Question
+      ↓
+FastAPI /ask
+      ↓
+Retriever
+      ↓
+Multilingual E5 Embeddings
+      ↓
+FAISS Vector Store
+      ↓
+Top-K Legal Articles
+      ↓
+Context Builder
+      ↓
+Article Sources
+```
+
+The current API focuses on **retrieval and source grounding**. LLM generation is intentionally not connected yet.
+
+### Start the API
+
+Run:
+
+```bash
+uv run uvicorn src.api.main:app --reload
+```
+
+The API is available locally at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Interactive API documentation is available through the FastAPI Swagger UI.
+
+### Health Check
+
+The `GET /health` endpoint verifies that the API and vector store are available.
+
+Example response:
+
+```json
+{
+  "status": "healthy",
+  "documents_indexed": 1149
+}
+```
+
+This confirms that the FAISS vector store contains all 1,149 article-level records.
+
+### Ask Endpoint
+
+The `POST /ask` endpoint accepts a legal question:
+
+```json
+{
+  "question": "ماذا يحدث إذا لم يوجد نص تشريعي يمكن تطبيقه؟"
+}
+```
+
+The endpoint retrieves the five most relevant legal articles and returns their article numbers, citations, and source pages.
+
+Example response:
+
+```json
+{
+  "answer": "LLM generation is not connected yet. Retrieved legal context is ready for generation.",
+  "sources": [
+    {
+      "article_number": 1,
+      "citation": "Egyptian Civil Code, Article 1",
+      "source_page": 1
+    },
+    {
+      "article_number": 200,
+      "citation": "Egyptian Civil Code, Article 200",
+      "source_page": 24
+    },
+    {
+      "article_number": 27,
+      "citation": "Egyptian Civil Code, Article 27",
+      "source_page": 4
+    },
+    {
+      "article_number": 2,
+      "citation": "Egyptian Civil Code, Article 2",
+      "source_page": 1
+    },
+    {
+      "article_number": 23,
+      "citation": "Egyptian Civil Code, Article 23",
+      "source_page": 4
+    }
+  ]
+}
+```
+
+For this test question, **Article 1 is retrieved as the top result**, which is the expected legal provision.
+
+### Current RAG Status
+
+At this stage, the project has a working retrieval API:
+
+* Structured bilingual Egyptian Civil Code corpus
+* Article-level chunks
+* Multilingual E5 embeddings
+* FAISS semantic search
+* Top-K retrieval
+* Context construction
+* Article-level source citations
+* FastAPI `/health` endpoint
+* FastAPI `/ask` endpoint
+
+## Current RAG Serving and Generation Stage
+
+The current implementation provides an end-to-end RAG question-answering pipeline:
+
+```text
+User Question
+     ↓
+FastAPI /ask
+     ↓
+E5 Query Embedding
+     ↓
+FAISS Vector Search
+     ↓
+Retrieved Legal Context
+     ↓
+Grounded Prompt
+     ↓
+API-based LLM
+     ↓
+Answer + Legal Sources
+```
+
+### API-based LLM
+
+The project currently uses an OpenAI-compatible API rather than running a local generative model. This keeps the initial implementation lightweight and avoids requiring a GPU.
+
+The generator is selected through the `.env` configuration:
+
+```env
+GENERATOR=api
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_API_KEY=<GROQ_API_KEY>
+LLM_MODEL=qwen/qwen3.8-27b
+```
+
+The application uses the same `Generator` interface for both mock and API-based generation. This allows the LLM provider to be changed later without changing the RAG pipeline.
+
+The API generator sends:
+
+* a system prompt containing the legal grounding rules
+* a user prompt containing the retrieved legal context and question
+* `temperature=0.0` for deterministic generation
+* a maximum response length of 800 tokens
+
+### Grounded Legal Generation
+
+The system prompt explicitly restricts the model to the retrieved legal context.
+
+The model is instructed to:
+
+* answer only from the retrieved Egyptian Civil Code context
+* avoid using outside legal knowledge
+* identify the relevant article
+* explicitly cite the article number
+* answer Arabic questions in Arabic
+* state when the retrieved context is insufficient
+
+This is important because legal hallucinations are unacceptable for the intended use case.
+
+### Current Retrieval Baseline
+
+The corpus contains **1,149 indexed records** from the Egyptian Civil Code.
+
+The current retriever uses:
+
+```text
+Embedding model: intfloat/multilingual-e5-base
+Embedding dimension: 768
+Vector store: FAISS
+Query format: query: <question>
+Top-k: 5
+```
+
+The original retrieval evaluation produced:
+
+| Metric   | Result |
+| -------- | -----: |
+| Recall@1 | 0.7500 |
+| Recall@3 | 0.8500 |
+| Recall@5 | 0.9000 |
+| MRR      | 0.8042 |
+
+### Known Retrieval Issue
+
+During API testing, a discrepancy was identified between the expected standalone retrieval results and the results returned through the running `/ask` endpoint.
+
+For example, the question:
+
+```text
+ماذا يحدث إذا لم يوجد نص تشريعي يمكن تطبيقه؟
+```
+
+should retrieve **Article 1**, which states the applicable order of legal sources when no applicable legislative provision exists.
+
+The standalone retrieval previously returned Article 1 among the highest-ranked results, while the running API returned unrelated articles.
+
+The following items have already been verified:
+
+* the API is running from the project root
+* the configured vector-store path resolves to `data/processed/vector_store_e5`
+* the vector store exists
+* the index contains 1,149 records
+* the retriever explicitly uses `intfloat/multilingual-e5-base`
+
+The exact cause of the API/standalone retrieval discrepancy is still under investigation.
+
+**This issue does not block the next MLOps stages.** It will be fixed before the final retrieval/RAGAS comparison, and the evaluation will be rerun after the fix.
+
+### Current Project Strategy
+
+The project intentionally starts with an API-based LLM because the main objective at this stage is to implement and evaluate the MLOps pipeline rather than spend time setting up local GPU inference.
+
+The generative serving stack will be optimized later:
+
+```text
+Current:
+API-based LLM
+      ↓
+RAG evaluation + observability
+
+Later:
+vLLM
+      ↓
+AWQ-4bit quantization
+      ↓
+Offline/local inference
+      ↓
+Original vs quantized comparison
+```
+
+This separation allows evaluation, monitoring, tracing, and deployment components to be developed before introducing the additional complexity of local LLM serving.
+
+
+## RAGAS Baseline Evaluation
+
+After implementing the RAG generation pipeline, the system was evaluated using **RAGAS 0.4.3** on a dataset of **50 Arabic legal questions**.
+
+The evaluation used the generated responses stored in:
+
+```text
+data/evaluation/ragas_responses.json
+```
+
+The evaluation was performed using the Groq-hosted LLM and the project's `intfloat/multilingual-e5-base` embedding model.
+
+### Baseline Results
+
+| Metric                |      Score |
+| --------------------- | ---------: |
+| **Faithfulness**      | **1.0000** |
+| **Context Precision** | **0.8750** |
+| **Context Recall**    | **1.0000** |
+
+The detailed evaluation results are stored in:
+
+```text
+data/evaluation/ragas_results.json
+```
+
+### Interpretation
+
+* **Faithfulness = 1.0000**
+  The generated answers were fully supported by the retrieved legal context in the evaluated dataset.
+
+* **Context Precision = 0.8750**
+  Most retrieved passages were relevant to the questions, although some retrieved passages were not strictly necessary for answering the question.
+
+* **Context Recall = 1.0000**
+  The required information needed to answer the reference questions was retrieved across the evaluation dataset.
+
+These results establish the **baseline RAG evaluation before further retrieval optimization**.
+
+### Retrieval Optimization Note
+
+Although the RAGAS baseline is strong, live API testing revealed an inconsistency in retrieval behavior for some questions. Therefore, the baseline should be treated as the evaluation of the stored 50-question response set rather than proof that the current live retriever is optimal.
+
+The retrieval pipeline will be investigated and optimized separately. After retrieval improvements, the same evaluation dataset can be rerun to compare the new metrics against this baseline.
+
+### Evaluation Flow
+
+```text
+50 Legal Questions
+        ↓
+RAG Retrieval
+        ↓
+Retrieved Legal Context
+        ↓
+Groq LLM Generation
+        ↓
+50 Generated Responses
+        ↓
+RAGAS 0.4.3
+        ↓
+┌─────────────────────────┐
+│ Faithfulness    1.0000  │
+│ Context Precision 0.875 │
+│ Context Recall  1.0000  │
+└─────────────────────────┘
+        ↓
+data/evaluation/ragas_results.json
+```
+
+This baseline provides a measurable reference point for subsequent retrieval optimization and MLOps monitoring.

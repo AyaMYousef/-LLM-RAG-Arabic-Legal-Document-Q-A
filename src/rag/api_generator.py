@@ -39,11 +39,15 @@ class APIGenerator(Generator):
                 },
             ],
             temperature=0.0,
+            max_tokens=300,
         )
+
+        print("LLM RESPONSE:")
+        print(response)
 
         content = response.choices[0].message.content
 
         if not content:
-            raise RuntimeError("LLM returned an empty response.")
+            raise RuntimeError(f"LLM returned an empty response. Full response: {response}")
 
         return content

@@ -70,6 +70,13 @@ def health() -> dict:
 def ask(request: AskRequest) -> AskResponse:
     results = retriever.search(request.question, k=5)
 
+    print("ASK RETRIEVAL:")
+    for result in results:
+        print(
+            result["metadata"]["article_number"],
+            result.get("score"),
+        )
+
     context = build_context(results)
     user_prompt = build_prompt(request.question, context)
 
