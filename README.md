@@ -1571,3 +1571,359 @@ StatusCode : 200
 StatusDescription : OK
 
 This confirms that the BentoML service has initialized successfully.
+
+
+## Prometheus Monitoring
+
+The RAG API exposes application and RAG-specific metrics using `prometheus-fastapi-instrumentator` and the Prometheus Python client.
+
+### Metrics
+
+The following custom metrics are exposed at `/metrics`:
+
+* `rag_requests_total` — total number of RAG requests.
+* `rag_errors_total` — total number of failed RAG requests.
+* `rag_retrieval_latency_seconds` — retrieval latency histogram.
+* `rag_llm_latency_seconds` — LLM generation latency histogram.
+
+FastAPI HTTP metrics and Python runtime/GC metrics are also exposed.
+
+### Verify the Metrics Endpoint
+
+Start the API:
+
+```bash
+uv run uvicorn src.api.main:app --reload
+```
+
+Verify the metrics endpoint:
+
+```bash
+curl http://127.0.0.1:8000/metrics
+```
+
+The response should contain metrics such as:
+
+```text
+rag_requests_total
+rag_errors_total
+rag_retrieval_latency_seconds
+rag_llm_latency_seconds
+```
+
+### Prometheus Configuration
+
+The project contains:
+
+```text
+prometheus/
+└── prometheus.yml
+```
+
+Configuration:
+
+```yaml
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "arabic-legal-rag"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets:
+          - "host.docker.internal:8000"
+```
+
+### Run Prometheus with Docker
+
+Docker Desktop is required.
+
+Pull the Prometheus image:
+
+```bash
+docker pull prom/prometheus
+```
+
+Start Prometheus:
+
+```bash
+docker run -d \
+  --name arabic-legal-prometheus \
+  -p 9090:9090 \
+  -v "$(pwd)/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml" \
+  prom/prometheus
+```
+
+Verify that the container is running:
+
+```bash
+docker ps
+```
+
+Prometheus is available at:
+
+```text
+http://localhost:9090
+```
+
+### Verify the Prometheus Target
+
+Open:
+
+```text
+http://localhost:9090
+```
+
+Then navigate to:
+
+**Status → Targets**
+
+The `arabic-legal-rag` target should show:
+
+```text
+UP
+```
+
+A successful target means Prometheus is successfully scraping:
+
+```text
+http://host.docker.internal:8000/metrics
+```
+
+### Example PromQL Queries
+
+Check whether the API target is available:
+
+```promql
+up
+```
+
+Check total RAG requests:
+
+```promql
+rag_requests_total
+```
+
+Check retrieval observations:
+
+```promql
+rag_retrieval_latency_seconds_count
+```
+
+Check LLM generation observations:
+
+```promql
+rag_llm_latency_seconds_count
+```
+
+At startup, the RAG counters remain at `0` until `/ask` requests are processed.
+
+### Prometheus Architecture
+
+```text
+┌─────────────────────┐
+│     FastAPI RAG     │
+│       :8000         │
+└──────────┬──────────┘
+           │
+        /metrics
+           │
+           ▼
+┌─────────────────────┐
+│     Prometheus      │
+│       :9090         │
+│      Docker         │
+└─────────────────────┘
+```
+
+---
+
+## Grafana Monitoring
+
+Grafana is used to visualize the Prometheus metrics exposed by the Arabic Legal RAG API.
+
+### Run Grafana with Docker
+
+Docker Desktop must be running.
+
+Pull the Grafana image:
+
+```bash
+docker pull grafana/grafana
+```
+
+Start Grafana:
+
+```bash
+docker run -d \
+  --name arabic-legal-grafana \
+  -p 3000:3000 \
+  grafana/grafana
+```
+
+Verify that both monitoring containers are running:
+
+```bash
+docker ps
+```
+
+Expected containers:
+
+```text
+arabic-legal-prometheus
+arabic-legal-grafana
+```
+
+Grafana is available at:
+
+```text
+http://localhost:3000
+```
+
+### Grafana Initial Login
+
+The default credentials are:
+
+```text
+Username: admin
+Password: admin
+```
+
+Grafana may request a password change during the first login.
+
+### Configure Prometheus as a Data Source
+
+In Grafana:
+
+1. Open **Connections → Data sources**.
+2. Select **Add new data source**.
+3. Select **Prometheus**.
+4. Set the Prometheus server URL to:
+
+```text
+http://host.docker.internal:9090
+```
+
+Because Grafana runs inside Docker, `localhost:9090` refers to the Grafana container itself. `host.docker.internal` allows the Grafana container to reach Prometheus through the host.
+
+Click **Save & test**.
+
+Successful configuration displays:
+
+```text
+Successfully queried the Prometheus API.
+```
+
+### RAG Monitoring Dashboard
+
+Dashboard name:
+
+**Arabic Legal RAG — Production Monitoring**
+
+The dashboard contains six monitoring panels.
+
+#### 1. RAG Request Rate
+
+Shows the rate of incoming RAG requests over the previous five minutes.
+
+```promql
+rate(rag_requests_total[5m])
+```
+
+#### 2. RAG Error Rate
+
+Shows the rate of failed RAG requests.
+
+```promql
+rate(rag_errors_total[5m])
+```
+
+#### 3. Retrieval Latency — p95
+
+Shows the 95th percentile document retrieval latency.
+
+```promql
+histogram_quantile(
+  0.95,
+  rate(rag_retrieval_latency_seconds_bucket[5m])
+)
+```
+
+#### 4. LLM Generation Latency — p95
+
+Shows the 95th percentile LLM generation latency.
+
+```promql
+histogram_quantile(
+  0.95,
+  rate(rag_llm_latency_seconds_bucket[5m])
+)
+```
+
+#### 5. API Request Latency — p95
+
+Shows the 95th percentile FastAPI request latency.
+
+```promql
+histogram_quantile(
+  0.95,
+  rate(http_request_duration_seconds_bucket[5m])
+)
+```
+
+#### 6. RAG API Availability
+
+Displays whether the Prometheus target is currently available.
+
+```promql
+up{job="arabic-legal-rag"}
+```
+
+Values:
+
+```text
+1 = UP
+0 = DOWN
+```
+
+### Monitoring Architecture
+
+```text
+                    ┌─────────────────────┐
+                    │     FastAPI RAG      │
+                    │       :8000          │
+                    └──────────┬──────────┘
+                               │
+                            /metrics
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │     Prometheus      │
+                    │       :9090         │
+                    │      Docker         │
+                    └──────────┬──────────┘
+                               │
+                           PromQL queries
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │       Grafana       │
+                    │       :3000         │
+                    │      Docker         │
+                    └─────────────────────┘
+```
+
+### Validation
+
+The monitoring stack was validated end-to-end:
+
+* FastAPI exposes `/metrics`.
+* Custom RAG Prometheus metrics are registered.
+* Prometheus runs successfully in Docker.
+* Prometheus successfully scrapes the FastAPI metrics endpoint.
+* The `arabic-legal-rag` Prometheus target reports **UP**.
+* Grafana runs successfully in Docker.
+* Grafana successfully queries Prometheus.
+* The **Arabic Legal RAG — Production Monitoring** dashboard has been configured.
+
+At the time of monitoring setup validation, no `/ask` requests had been processed after the Prometheus instrumentation was enabled, so the RAG request and latency metrics had not yet accumulated observations.
