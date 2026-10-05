@@ -30,6 +30,7 @@ dependencies = [
     "requests>=2.34.2",
     "mlflow>=3.16.1",
     "langfuse>=4.17.0",
+    "bentoml>=1.4.39",
 ]
 
 [project.optional-dependencies]
