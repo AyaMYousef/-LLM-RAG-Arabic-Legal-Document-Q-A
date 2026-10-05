@@ -1125,3 +1125,61 @@ Article 1 is the expected legal provision for this question, confirming that the
 
 An earlier `/ask` request returned a different set of articles. Direct inspection of the `Retriever` object imported by the API confirmed that the current API configuration loads the correct E5 model and the 1,149-vector E5 index and produces the expected retrieval results. The earlier discrepancy was therefore treated as stale server state rather than an indexing or embedding problem.
 
+## MLflow Experiment Tracking
+
+MLflow was added to track the RAG evaluation results as an experiment rather than keeping the metrics only in JSON files.
+
+The RAGAS baseline was logged under the experiment:
+
+```text
+arabic-legal-rag
+```
+
+with the run:
+
+```text
+ragas-baseline
+```
+
+### Logged Metrics
+
+| Metric            |      Value |
+| ----------------- | ---------: |
+| Faithfulness      | **1.0000** |
+| Context Precision | **0.8750** |
+| Context Recall    | **1.0000** |
+
+The run also records the main configuration used for the evaluation:
+
+* Embedding model: `intfloat/multilingual-e5-base`
+* LLM: `qwen/qwen3.8-27b`
+* Evaluation samples: `50`
+* Evaluation type: `RAGAS baseline`
+
+The detailed RAGAS results are also stored as an MLflow artifact:
+
+```text
+data/evaluation/ragas_results.json
+```
+
+### Running MLflow
+
+Start the local MLflow UI with:
+
+```bash
+uv run mlflow ui
+```
+
+The tracking interface is available locally at:
+
+```text
+http://127.0.0.1:5000
+```
+
+The experiment provides a reproducible baseline that can be compared against future retrieval or generation improvements.
+
+For example, after changing the retrieval strategy, a new RAGAS evaluation can be logged as another MLflow run and compared with the baseline metrics.
+
+### Why MLflow is Used
+
+MLflow provides experiment tracking for the RAG pipeline. It allows evaluation results and configuration parameters to be recorded consistently across iterations, making it possible to determine whether a change actually improves the system rather than relying on manual comparison of JSON files.
