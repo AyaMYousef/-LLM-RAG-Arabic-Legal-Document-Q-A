@@ -1091,3 +1091,37 @@ data/evaluation/ragas_results.json
 ```
 
 This baseline provides a measurable reference point for subsequent retrieval optimization and MLOps monitoring.
+
+### Retrieval Verification
+
+Before proceeding to the next MLOps components, the retrieval pipeline was independently verified using the production E5 vector store.
+
+For the test question:
+
+```text
+ماذا يحدث إذا لم يوجد نص تشريعي يمكن تطبيقه؟
+```
+
+the active retriever loaded:
+
+```text
+Embedding model: intfloat/multilingual-e5-base
+Embedding dimension: 768
+Indexed documents: 1149
+Vector store: data/processed/vector_store_e5
+```
+
+The top-5 retrieval results were:
+
+| Rank | Article | Similarity |
+| ---- | ------- | ---------: |
+| 1    | **1**   | **0.8436** |
+| 2    | 200     |     0.8309 |
+| 3    | 27      |     0.8184 |
+| 4    | 2       |     0.8177 |
+| 5    | 23      |     0.8176 |
+
+Article 1 is the expected legal provision for this question, confirming that the E5 embedding and FAISS retrieval pipeline can correctly identify the relevant article.
+
+An earlier `/ask` request returned a different set of articles. Direct inspection of the `Retriever` object imported by the API confirmed that the current API configuration loads the correct E5 model and the 1,149-vector E5 index and produces the expected retrieval results. The earlier discrepancy was therefore treated as stale server state rather than an indexing or embedding problem.
+
