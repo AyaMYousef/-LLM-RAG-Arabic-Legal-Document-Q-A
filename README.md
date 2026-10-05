@@ -1125,61 +1125,373 @@ Article 1 is the expected legal provision for this question, confirming that the
 
 An earlier `/ask` request returned a different set of articles. Direct inspection of the `Retriever` object imported by the API confirmed that the current API configuration loads the correct E5 model and the 1,149-vector E5 index and produces the expected retrieval results. The earlier discrepancy was therefore treated as stale server state rather than an indexing or embedding problem.
 
-## MLflow Experiment Tracking
+## Running MLOps Tracking and Observability
 
-MLflow was added to track the RAG evaluation results as an experiment rather than keeping the metrics only in JSON files.
+This project uses **MLflow** for experiment tracking and **Langfuse** for RAG/LLM observability.
 
-The RAGAS baseline was logged under the experiment:
+The two tools serve different purposes:
 
-```text
-arabic-legal-rag
+* **MLflow** tracks evaluation experiments, metrics, parameters, and artifacts.
+* **Langfuse** traces individual RAG requests and shows the retrieval and LLM-generation steps.
+
+---
+
+### 1. Activate the Environment
+
+From the project root:
+
+```powershell
+.venv\Scripts\activate
 ```
 
-with the run:
+Or run commands directly through `uv` without activating the environment:
 
-```text
-ragas-baseline
+```powershell
+uv run <command>
 ```
 
-### Logged Metrics
+---
 
-| Metric            |      Value |
-| ----------------- | ---------: |
-| Faithfulness      | **1.0000** |
-| Context Precision | **0.8750** |
-| Context Recall    | **1.0000** |
+## 2. MLflow Experiment Tracking
 
-The run also records the main configuration used for the evaluation:
+MLflow is used to record the RAGAS evaluation results and the configuration used for the evaluation.
 
-* Embedding model: `intfloat/multilingual-e5-base`
-* LLM: `qwen/qwen3.8-27b`
-* Evaluation samples: `50`
-* Evaluation type: `RAGAS baseline`
+### Start the MLflow UI
 
-The detailed RAGAS results are also stored as an MLflow artifact:
+Open a dedicated terminal in the project root:
 
-```text
-data/evaluation/ragas_results.json
-```
-
-### Running MLflow
-
-Start the local MLflow UI with:
-
-```bash
+```powershell
 uv run mlflow ui
 ```
 
-The tracking interface is available locally at:
+The local MLflow UI is available at:
 
 ```text
 http://127.0.0.1:5000
 ```
 
-The experiment provides a reproducible baseline that can be compared against future retrieval or generation improvements.
+MLflow's tracking UI allows experiments and runs to be inspected, including metrics, parameters, and artifacts.
 
-For example, after changing the retrieval strategy, a new RAGAS evaluation can be logged as another MLflow run and compared with the baseline metrics.
+Keep this terminal running while using the MLflow UI.
 
-### Why MLflow is Used
+### Log the RAGAS Results
 
-MLflow provides experiment tracking for the RAG pipeline. It allows evaluation results and configuration parameters to be recorded consistently across iterations, making it possible to determine whether a change actually improves the system rather than relying on manual comparison of JSON files.
+In a second terminal:
+
+```powershell
+uv run python scripts/log_ragas_mlflow.py
+```
+
+Expected output:
+
+```text
+RAGAS metrics logged to MLflow.
+```
+
+The script logs the following metrics:
+
+```text
+faithfulness
+context_precision
+context_recall
+```
+
+It also records parameters such as:
+
+```text
+embedding_model
+llm_model
+num_samples
+evaluation_type
+```
+
+and stores:
+
+```text
+data/evaluation/ragas_results.json
+```
+
+as an MLflow artifact.
+
+### View the Experiment
+
+Open:
+
+```text
+http://127.0.0.1:5000
+```
+
+Then:
+
+1. Open the `arabic-legal-rag` experiment.
+2. Open the `ragas-baseline` run.
+3. Review the logged metrics.
+4. Review the parameters.
+5. Open the logged RAGAS results artifact.
+
+This provides a reproducible baseline that can later be compared against retrieval or generation improvements.
+
+---
+
+## 3. Langfuse Observability
+
+Langfuse provides request-level tracing for the RAG pipeline.
+
+The current integration uses the Langfuse Python SDK and `get_client()` with the modern observation API.
+
+### Configure Langfuse
+
+Create or update the local `.env` file:
+
+```text
+LANGFUSE_PUBLIC_KEY=your_public_key
+LANGFUSE_SECRET_KEY=your_secret_key
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
+```
+
+Do **not** commit the `.env` file to Git.
+
+The credentials are used by the application to send traces to Langfuse Cloud.
+
+### Verify Langfuse Integration
+
+Before starting the API, verify that the application and Langfuse client can be imported:
+
+```powershell
+uv run python -c "from src.api.main import app; print('API + Langfuse instrumentation OK')"
+```
+
+Expected output ends with:
+
+```text
+API + Langfuse instrumentation OK
+```
+
+### Start the RAG API
+
+From another terminal:
+
+```powershell
+uv run uvicorn src.api.main:app
+```
+
+The API will be available at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Swagger documentation:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### Generate a Langfuse Trace
+
+When an `/ask` request is processed, the application creates a root:
+
+```text
+rag-ask
+```
+
+with nested observations:
+
+```text
+rag-ask
+├── retrieval
+│   ├── question
+│   ├── top_k
+│   ├── retrieved article numbers
+│   └── similarity scores
+│
+└── llm-generation
+    ├── model
+    ├── system prompt
+    ├── user prompt
+    └── generated answer
+```
+
+The Langfuse SDK automatically manages the lifecycle of these observations when using context managers.
+
+### View Traces
+
+Open the Langfuse Cloud dashboard:
+
+```text
+https://cloud.langfuse.com
+```
+
+After a request has been processed, open the corresponding trace and inspect:
+
+* Retrieved legal articles
+* Retrieval similarity scores
+* LLM model
+* Prompt sent to the model
+* Generated answer
+* End-to-end RAG execution
+
+The application also flushes pending Langfuse events during shutdown so buffered observations are sent before the application exits.
+
+---
+
+## 4. Recommended Terminal Setup
+
+For normal development, use three terminals.
+
+### Terminal 1 — MLflow
+
+```powershell
+uv run mlflow ui
+```
+
+Keep running.
+
+### Terminal 2 — FastAPI
+
+```powershell
+uv run uvicorn src.api.main:app
+```
+
+Keep running.
+
+### Terminal 3 — Commands / Evaluation
+
+Use this terminal for commands such as:
+
+```powershell
+uv run python scripts/log_ragas_mlflow.py
+```
+
+or other evaluation and testing scripts.
+
+---
+
+## 5. MLOps Workflow
+
+The current MLOps workflow is:
+
+```text
+                 ┌─────────────────────┐
+                 │ Egyptian Civil Code │
+                 └──────────┬──────────┘
+                            │
+                            ▼
+                    Data Processing
+                            │
+                            ▼
+                    E5 Embeddings
+                            │
+                            ▼
+                     FAISS Retrieval
+                            │
+                            ▼
+                     Context Builder
+                            │
+                            ▼
+                       LLM API
+                            │
+                            ▼
+                         Answer
+                            │
+             ┌──────────────┴──────────────┐
+             │                             │
+             ▼                             ▼
+        Langfuse                        RAGAS
+       Observability                   Evaluation
+             │                             │
+             │                             ▼
+             │                          MLflow
+             │                      Experiment Tracking
+             │
+             ▼
+       Request Traces
+```
+
+### Responsibilities
+
+| Tool                       | Purpose                           |
+| -------------------------- | --------------------------------- |
+| FastAPI                    | Serve the RAG application         |
+| FAISS                      | Vector retrieval                  |
+| Sentence Transformers / E5 | Multilingual embeddings           |
+| Groq API                   | LLM generation                    |
+| RAGAS                      | RAG quality evaluation            |
+| MLflow                     | Experiment and metric tracking    |
+| Langfuse                   | LLM/RAG tracing and observability |
+
+This separation allows retrieval quality, answer quality, experiments, and production request behavior to be investigated independently.
+
+---
+
+## 6. Important Notes
+
+### MLflow
+
+MLflow is primarily used here for **offline experiment tracking**. The current baseline records the RAGAS results so that future improvements can be compared quantitatively.
+
+### Langfuse
+
+Langfuse is primarily used for **online/request-level observability**. It helps determine whether a problem originates from retrieval, prompt construction, or LLM generation.
+
+### API Quotas
+
+The LLM provider is accessed through an API. If the provider reaches its rate or token limit, `/ask` generation can temporarily fail even though retrieval and Langfuse instrumentation are functioning correctly.
+
+### Secrets
+
+Never commit:
+
+```text
+.env
+```
+
+or API keys such as:
+
+```text
+GROQ_API_KEY
+LANGFUSE_SECRET_KEY
+```
+
+to the repository.
+
+---
+
+## 7. Quick Start Checklist
+
+For a complete local MLOps session:
+
+```powershell
+# Terminal 1
+uv run mlflow ui
+```
+
+```powershell
+# Terminal 2
+uv run uvicorn src.api.main:app
+```
+
+```powershell
+# Terminal 3
+uv run python scripts/log_ragas_mlflow.py
+```
+
+Then open:
+
+```text
+MLflow:
+http://127.0.0.1:5000
+
+FastAPI:
+http://127.0.0.1:8000/docs
+
+Langfuse:
+https://cloud.langfuse.com
+```
+
+At this point:
+
+* **MLflow** shows the evaluation experiment.
+* **FastAPI** serves the RAG application.
+* **Langfuse** shows request-level RAG traces when `/ask` requests are processed.
+

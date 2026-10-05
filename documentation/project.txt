@@ -1019,3 +1019,130 @@ Original vs quantized comparison
 ```
 
 This separation allows evaluation, monitoring, tracing, and deployment components to be developed before introducing the additional complexity of local LLM serving.
+
+
+## Langfuse Observability
+
+Langfuse was integrated to provide observability across the RAG pipeline. The integration uses Langfuse Cloud and does not require a local GPU or local LLM.
+
+### Traced RAG Pipeline
+
+Each `/ask` request is represented as a root `rag-ask` trace containing the major stages of the pipeline:
+
+```text
+rag-ask
+├── retrieval
+│   ├── question
+│   ├── top_k
+│   ├── retrieved article numbers
+│   └── similarity scores
+│
+└── llm-generation
+    ├── model
+    ├── system prompt
+    ├── user prompt
+    └── generated answer
+```
+
+### Retrieval Observability
+
+The `retrieval` span records:
+
+* The user's question
+* The number of retrieved documents (`top_k`)
+* Retrieved Egyptian Civil Code article numbers
+* Similarity scores
+
+This makes it possible to inspect whether unexpected answers originate from the retrieval stage.
+
+### LLM Generation Observability
+
+The `llm-generation` generation records:
+
+* The configured LLM model
+* The system prompt
+* The constructed user prompt
+* The generated answer
+
+This provides visibility into the complete generation stage without requiring the LLM to run locally.
+
+### Configuration
+
+Langfuse credentials are stored in the local `.env` file:
+
+```text
+LANGFUSE_PUBLIC_KEY=...
+LANGFUSE_SECRET_KEY=...
+LANGFUSE_HOST=https://cloud.langfuse.com
+```
+
+Secrets are excluded from Git through `.gitignore` and are not committed to the repository.
+
+### Why Langfuse?
+
+Langfuse provides end-to-end visibility into the RAG pipeline. In particular, it helps distinguish retrieval problems from generation problems by exposing the retrieved articles, similarity scores, prompts, and generated responses in a single trace.
+
+This is especially useful for the legal RAG system because an incorrect answer can be investigated by following the request from retrieval through LLM generation.
+
+> Note: Live LLM tracing through `/ask` depends on the availability of the configured API model. The Langfuse integration itself was verified successfully by importing the FastAPI application.
+
+## MLflow Experiment Tracking
+
+MLflow was added to track the RAG evaluation results as an experiment rather than keeping the metrics only in JSON files.
+
+The RAGAS baseline was logged under the experiment:
+
+```text
+arabic-legal-rag
+```
+
+with the run:
+
+```text
+ragas-baseline
+```
+
+### Logged Metrics
+
+| Metric            |      Value |
+| ----------------- | ---------: |
+| Faithfulness      | **1.0000** |
+| Context Precision | **0.8750** |
+| Context Recall    | **1.0000** |
+
+The run also records the main configuration used for the evaluation:
+
+* Embedding model: `intfloat/multilingual-e5-base`
+* LLM: `qwen/qwen3.8-27b`
+* Evaluation samples: `50`
+* Evaluation type: `RAGAS baseline`
+
+The detailed RAGAS results are also stored as an MLflow artifact:
+
+```text
+data/evaluation/ragas_results.json
+```
+
+### Running MLflow
+
+Start the local MLflow UI with:
+
+```bash
+uv run mlflow ui
+```
+
+The tracking interface is available locally at:
+
+```text
+http://127.0.0.1:5000
+```
+
+The experiment provides a reproducible baseline that can be compared against future retrieval or generation improvements.
+
+For example, after changing the retrieval strategy, a new RAGAS evaluation can be logged as another MLflow run and compared with the baseline metrics.
+
+### Why MLflow is Used
+
+MLflow provides experiment tracking for the RAG pipeline. It allows evaluation results and configuration parameters to be recorded consistently across iterations, making it possible to determine whether a change actually improves the system rather than relying on manual comparison of JSON files.
+
+
