@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Iterator
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from langfuse import get_client
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
@@ -241,6 +243,33 @@ def ask(request: AskRequest) -> AskResponse:
     except Exception:
         rag_errors_total.inc()
         raise
+
+
+@app.post("/ask/stream")
+def ask_stream(request: AskRequest) -> StreamingResponse:
+    valid, error_message = validate_input(request.question)
+
+    if not valid:
+        raise HTTPException(status_code=400, detail=error_message)
+
+    results = retriever.search(request.question, k=5)
+    context = build_context(results)
+    user_prompt = build_prompt(request.question, context)
+
+    def generate() -> Iterator[str]:
+        try:
+            yield from generator.generate_stream(
+                SYSTEM_PROMPT,
+                user_prompt,
+            )
+        except Exception:
+            rag_errors_total.inc()
+            raise
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/plain",
+    )
 
     @app.on_event("shutdown")
     def shutdown_event():
