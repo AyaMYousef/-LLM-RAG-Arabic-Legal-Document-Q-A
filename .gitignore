@@ -13,6 +13,9 @@ data/raw/*
 !data/raw/*.dvc
 data/processed/*
 !data/processed/*.dvc
+!data/processed/corpus_raw.json
+!data/processed/vector_store_e5/
+!data/processed/vector_store_e5/*
 
 # IDE & OS
 .vscode/
