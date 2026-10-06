@@ -34,6 +34,8 @@ from src.rag.retriever import Retriever
 load_dotenv()
 langfuse = get_client()
 
+
+##
 app = FastAPI(
     title="Egyptian Civil Code RAG API",
     version="0.1.0",
