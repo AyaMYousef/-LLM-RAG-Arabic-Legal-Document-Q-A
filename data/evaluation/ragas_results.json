@@ -2,9 +2,9 @@
   "num_samples": 50,
   "metrics": {
     "faithfulness": 1.0,
-    "context_precision": 0.89999999991,
+    "context_precision": 0.9285714284785714,
     "context_recall": 1.0,
-    "answer_relevancy": 0.8318088333877218
+    "answer_relevancy": 0.8318091761341806
   },
   "results": [
     {
@@ -21,7 +21,7 @@
       "faithfulness": 1.0,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_relevancy": 0.8318632441752948
+      "answer_relevancy": 0.8318636196427917
     },
     {
       "user_input": "ما الذي يحدث عند عدم وجود نص قانوني ينطبق على المسألة؟",
@@ -37,7 +37,7 @@
       "faithfulness": 1.0,
       "context_precision": 0.49999999995,
       "context_recall": 1.0,
-      "answer_relevancy": 0.8136998143029299
+      "answer_relevancy": 0.8137001776466987
     },
     {
       "user_input": "ما هي حالات إلغاء النص التشريعي؟",
@@ -53,7 +53,7 @@
       "faithfulness": 1.0,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_relevancy": 0.8804469592709179
+      "answer_relevancy": 0.8804471620873259
     },
     {
       "user_input": "متى يكون استعمال الحق غير مشروع؟",
@@ -69,7 +69,7 @@
       "faithfulness": 1.0,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_relevancy": 0.797039774124233
+      "answer_relevancy": 0.7970402341858714
     },
     {
       "user_input": "متى يعتبر استعمال الحق مخالفا للقانون؟",
@@ -85,7 +85,7 @@
       "faithfulness": 1.0,
       "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_relevancy": 0.8109419025197989
+      "answer_relevancy": 0.810942206283134
     },
     {
       "user_input": "متى تبدأ الشخصية القانونية للإنسان؟",
@@ -99,9 +99,9 @@
       "response": "وفقًا للمادة 29 من القانون المدني، تبدأ شخصية الإنسان بتمام ولادته حياً.",
       "reference": "(١ تبدأ شخصية اإلنسان بتمام والدته حيا، وتنتهي بموته (٢ ومع ذلك فحقوق الحمل المستكن يعينها القانون",
       "faithfulness": 1.0,
-      "context_precision": NaN,
+      "context_precision": 0.9999999999,
       "context_recall": 1.0,
-      "answer_relevancy": 0.8426120220674982
+      "answer_relevancy": 0.8426123614870111
     },
     {
       "user_input": "متى تنتهي الشخصية القانونية للإنسان؟",
@@ -115,9 +115,9 @@
       "response": "وفقًا للمادة 29 من القانون المدني، تنتهي الشخصية القانونية للإنسان بموته.",
       "reference": "(١ تبدأ شخصية اإلنسان بتمام والدته حيا، وتنتهي بموته (٢ ومع ذلك فحقوق الحمل المستكن يعينها القانون",
       "faithfulness": 1.0,
-      "context_precision": NaN,
-      "context_recall": NaN,
-      "answer_relevancy": 0.8460581172533798
+      "context_precision": 0.9999999999,
+      "context_recall": 1.0,
+      "answer_relevancy": 0.8460584716064317
     },
     {
       "user_input": "كيف تثبت الولادة والوفاة؟",
@@ -130,7 +130,7 @@
       ],
       "response": "وفقًا للمادة 30 من القانون المدني، تُثبت الولادة والوفاة بالسجلات الرسمية المعدة لذلك. وإذا لم يوجد هذا الدليل، أو تبين عدم صحة ما أدرج بالسجلات، جاز الإثبات بأية طريقة أخرى.",
       "reference": "(١ تثبت الوالدة والوفاء بالسجالت الرسمية المعدة لذلك (٢ فإذا لم يوجد هذا الدليل ، أو تبين عدم صحة ما أدرج بالسجالت ، جاز اإلثبات بأية طريقة أخرى",
-      "faithfulness": NaN,
+      "faithfulness": 1.0,
       "context_precision": NaN,
       "context_recall": NaN,
       "answer_relevancy": NaN

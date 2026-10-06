@@ -79,10 +79,11 @@ def create_evaluator_llm():
     )
 
     return llm_factory(
-        model=os.environ["LLM_MODEL"],
-        provider="openai",
-        client=client,
-    )
+    model=os.environ["LLM_MODEL"],
+    provider="openai",
+    client=client,
+    max_tokens=512,
+)
 
 
 def main() -> None:
