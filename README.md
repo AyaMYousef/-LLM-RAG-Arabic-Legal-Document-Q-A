@@ -1928,122 +1928,176 @@ The monitoring stack was validated end-to-end:
 
 At the time of monitoring setup validation, no `/ask` requests had been processed after the Prometheus instrumentation was enabled, so the RAG request and latency metrics had not yet accumulated observations.
 
+## Docker Deployment
 
-## CI/CD
+The application can be packaged and run as a Docker container with the complete RAG runtime environment.
 
-The project uses **GitHub Actions** for continuous integration.
+### Docker Image
 
-### CI Pipeline
+The Docker image includes:
 
-The workflow is defined in:
+- Python 3.12 runtime
+- Project dependencies managed with `uv`
+- FastAPI application
+- Processed Egyptian Civil Code corpus
+- E5 FAISS vector store
+- `intfloat/multilingual-e5-base` embedding model
+
+The embedding model is downloaded during the Docker image build so that the running container does not need to download the model at startup.
+
+### Build the Image
+
+From the project root:
+
+```bash
+docker build -t arabic-legal-rag:latest .
+```
+
+### Run the Container
+
+Start the API on port `8000`:
+
+```bash
+docker run --rm -p 8000:8000 arabic-legal-rag:latest
+```
+
+The API is then available at:
 
 ```text
-.github/workflows/ci.yml
+http://localhost:8000
 ```
 
-The pipeline runs automatically on:
+### Health Check
 
-- Pushes to `main`
-- Pull requests targeting `main`
+Verify that the container and RAG components are running:
 
-The current pipeline performs the following steps:
-
-1. Checks out the repository.
-2. Installs `uv`.
-3. Installs Python 3.12.
-4. Installs the project dependencies from the locked `uv.lock` file.
-5. Runs Ruff for code-quality and lint checks.
-6. Runs the automated test suite with pytest.
-
-### CI Workflow
-
-```yaml
-name: CI
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          version: "latest"
-
-      - name: Set up Python
-        run: uv python install 3.12
-
-      - name: Install dependencies
-        run: uv sync --extra dev --frozen
-
-      - name: Lint
-        run: uv run ruff check .
-
-      - name: Run tests
-        run: uv run pytest
+```bash
+curl http://localhost:8000/health
 ```
 
-### Validation
+### Test the RAG API
 
-The CI pipeline has been successfully executed on GitHub Actions.
+Send a question to the `/ask` endpoint:
 
-The current validation includes:
+```bash
+curl -X POST http://localhost:8000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question":"ما هو القانون؟"}'
+```
 
-- **Ruff:** all checks passed
-- **Pytest:** 5 tests passed
-- **Dependency installation:** successful using the locked `uv.lock`
-- **GitHub Actions workflow:** successful
+The response contains the generated answer and the retrieved legal sources.
 
-The CI pipeline therefore prevents changes from being merged or pushed without passing the project's linting and automated tests.
-
-### Secrets
-
-External API credentials are not stored in the repository or Docker image.
-
-When required by future CI/CD jobs, secrets such as LLM provider and observability credentials will be supplied through **GitHub Actions Secrets** and injected as environment variables at runtime.
-
-Examples include:
+The interactive API documentation is also available at:
 
 ```text
-GROQ_API_KEY
-LANGFUSE_PUBLIC_KEY
-LANGFUSE_SECRET_KEY
-LANGFUSE_HOST
+http://localhost:8000/docs
 ```
 
-The current lint and test jobs do not require these credentials.
+### Configuration and Secrets
 
-### Docker/CD Extension
+API credentials are **not stored in the Docker image**.
 
-Docker image build and registry publishing are planned as the next CI/CD extension.
+The Docker image uses the mock generator by default:
 
-They will be added after the Docker image has been validated locally. The planned pipeline is:
+```text
+GENERATOR=mock
+LLM_MODEL=mock
+```
+
+Production LLM API credentials will be provided at runtime through environment variables or GitHub Actions Secrets rather than being embedded
+
+### Docker Integration
+
+Docker has been added to the project to provide a reproducible runtime environment for the Arabic Legal RAG API.
+
+The Docker image includes:
+
+- Python 3.12 runtime
+- Project dependencies installed from `uv.lock`
+- FastAPI application
+- Processed Egyptian Civil Code corpus
+- E5 FAISS vector store
+- `intfloat/multilingual-e5-base` embedding model
+
+The embedding model is downloaded during the image build so that the container can load the retriever without downloading the model at startup.
+
+### Docker Build
+
+The image can be built locally with:
+
+```bash
+docker build -t arabic-legal-rag:latest .
+```
+
+The image was successfully built and tagged as:
+
+```text
+arabic-legal-rag:latest
+```
+
+### Docker Runtime Validation
+
+The container was successfully started with:
+
+```bash
+docker run --rm -p 8000:8000 arabic-legal-rag:latest
+```
+
+The following endpoints were validated successfully:
+
+```text
+GET  /health
+POST /ask
+```
+
+The interactive API documentation is available at:
+
+```text
+http://localhost:8000/docs
+```
+
+The `/ask` endpoint was tested with an Arabic legal question and successfully returned a response with retrieved legal context.
+
+This confirms that the RAG application can run successfully as a Dockerized service.
+
+### CI/CD Status
+
+The current CI/CD implementation consists of two validated components:
 
 ```text
 GitHub Push / Pull Request
           |
           v
-     Lint + Tests
+    GitHub Actions
           |
           v
-     Docker Build
+    Lint + Tests
           |
           v
-   Container Registry
+     Docker Image
           |
           v
-      Deployment
+   Local Validation
 ```
 
-Docker build and image publishing are **not currently included in the CI workflow**.
+**Completed:**
+
+- GitHub Actions CI
+- Locked dependency installation with `uv`
+- Ruff linting
+- Pytest automated tests
+- Docker image creation
+- E5 model packaging
+- Local container execution
+- `/health` validation
+- `/ask` RAG validation
+
+**Next CI/CD steps:**
+
+- Add Docker image build to GitHub Actions
+- Publish the image to GitHub Container Registry (GHCR)
+- Add the RAGAS quality gate
+- Configure required API credentials through GitHub Actions Secrets
+- Add deployment automation
+
+Docker image publishing and deployment are **not yet part of the GitHub Actions workflow**.
