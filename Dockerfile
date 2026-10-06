@@ -14,9 +14,6 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync --frozen --no-dev
 
-# Download the embedding model during image build.
-RUN uv run python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('intfloat/multilingual-e5-base')"
-
 COPY src ./src
 COPY data/processed/corpus_raw.json ./data/processed/corpus_raw.json
 COPY data/processed/vector_store_e5 ./data/processed/vector_store_e5
