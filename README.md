@@ -1927,3 +1927,123 @@ The monitoring stack was validated end-to-end:
 * The **Arabic Legal RAG — Production Monitoring** dashboard has been configured.
 
 At the time of monitoring setup validation, no `/ask` requests had been processed after the Prometheus instrumentation was enabled, so the RAG request and latency metrics had not yet accumulated observations.
+
+
+## CI/CD
+
+The project uses **GitHub Actions** for continuous integration.
+
+### CI Pipeline
+
+The workflow is defined in:
+
+```text
+.github/workflows/ci.yml
+```
+
+The pipeline runs automatically on:
+
+- Pushes to `main`
+- Pull requests targeting `main`
+
+The current pipeline performs the following steps:
+
+1. Checks out the repository.
+2. Installs `uv`.
+3. Installs Python 3.12.
+4. Installs the project dependencies from the locked `uv.lock` file.
+5. Runs Ruff for code-quality and lint checks.
+6. Runs the automated test suite with pytest.
+
+### CI Workflow
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Run tests
+        run: uv run pytest
+```
+
+### Validation
+
+The CI pipeline has been successfully executed on GitHub Actions.
+
+The current validation includes:
+
+- **Ruff:** all checks passed
+- **Pytest:** 5 tests passed
+- **Dependency installation:** successful using the locked `uv.lock`
+- **GitHub Actions workflow:** successful
+
+The CI pipeline therefore prevents changes from being merged or pushed without passing the project's linting and automated tests.
+
+### Secrets
+
+External API credentials are not stored in the repository or Docker image.
+
+When required by future CI/CD jobs, secrets such as LLM provider and observability credentials will be supplied through **GitHub Actions Secrets** and injected as environment variables at runtime.
+
+Examples include:
+
+```text
+GROQ_API_KEY
+LANGFUSE_PUBLIC_KEY
+LANGFUSE_SECRET_KEY
+LANGFUSE_HOST
+```
+
+The current lint and test jobs do not require these credentials.
+
+### Docker/CD Extension
+
+Docker image build and registry publishing are planned as the next CI/CD extension.
+
+They will be added after the Docker image has been validated locally. The planned pipeline is:
+
+```text
+GitHub Push / Pull Request
+          |
+          v
+     Lint + Tests
+          |
+          v
+     Docker Build
+          |
+          v
+   Container Registry
+          |
+          v
+      Deployment
+```
+
+Docker build and image publishing are **not currently included in the CI workflow**.
