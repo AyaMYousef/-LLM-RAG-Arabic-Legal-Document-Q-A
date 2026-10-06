@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from ragas import evaluate
 from ragas.dataset_schema import EvaluationDataset, SingleTurnSample
-from ragas.llms import llm_factory
 from ragas.embeddings.base import BaseRagasEmbeddings
+from ragas.llms import llm_factory
 from ragas.metrics import (
     AnswerRelevancy,
     ContextPrecision,
@@ -17,7 +17,6 @@ from ragas.metrics import (
     Faithfulness,
 )
 from sentence_transformers import SentenceTransformer
-
 
 load_dotenv()
 

@@ -98,7 +98,7 @@ class FAISSVectorStore:
             )
 
     @classmethod
-    def load(cls, directory: str | Path) -> "FAISSVectorStore":
+    def load(cls, directory: str | Path) -> FAISSVectorStore:
         """Load a previously saved vector store."""
 
         directory = Path(directory)

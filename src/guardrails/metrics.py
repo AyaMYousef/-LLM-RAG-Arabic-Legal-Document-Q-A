@@ -1,6 +1,5 @@
 from prometheus_client import Counter, Histogram
 
-
 guardrail_decisions_total = Counter(
     "guardrail_decisions_total",
     "Total number of guardrail decisions",

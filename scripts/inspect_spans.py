@@ -5,7 +5,6 @@ from pathlib import Path
 
 import fitz
 
-
 PDF_PATH = Path("data/raw/egyptian_civil_code.pdf")
 OUTPUT_PATH = Path("reports/pdf_spans.json")
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 SYSTEM_PROMPT = """You are a legal question-answering assistant for the Egyptian Civil Code.
 
 Your ONLY source of legal information is the LEGAL CONTEXT provided in the user message.

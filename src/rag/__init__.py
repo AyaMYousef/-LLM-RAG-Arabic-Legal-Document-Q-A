@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from src.ingestion.embedder import Embedder
 from src.ingestion.vector_store import FAISSVectorStore

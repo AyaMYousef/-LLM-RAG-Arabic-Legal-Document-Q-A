@@ -1,6 +1,5 @@
 import re
 
-
 # Egyptian mobile numbers:
 # 010xxxxxxxx, 011xxxxxxxx, 012xxxxxxxx, 015xxxxxxxx
 EGYPTIAN_PHONE_PATTERN = re.compile(

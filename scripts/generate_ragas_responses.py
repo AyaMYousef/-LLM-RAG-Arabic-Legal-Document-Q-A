@@ -5,7 +5,6 @@ from pathlib import Path
 
 import requests
 
-
 INPUT_PATH = Path("data/evaluation/ragas_inputs.json")
 OUTPUT_PATH = Path("data/evaluation/ragas_responses.json")
 

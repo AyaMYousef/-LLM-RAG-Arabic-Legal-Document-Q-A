@@ -13,7 +13,6 @@ from src.rag.mock_generator import MockGenerator
 from src.rag.prompt_builder import SYSTEM_PROMPT, build_prompt
 from src.rag.retriever import Retriever
 
-
 load_dotenv()
 
 

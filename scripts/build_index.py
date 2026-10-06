@@ -7,7 +7,6 @@ from src.ingestion.chunker import build_chunks
 from src.ingestion.embedder import Embedder
 from src.ingestion.vector_store import FAISSVectorStore
 
-
 CORPUS_PATH = Path("data/processed/corpus_raw.json")
 INDEX_DIR = Path("data/processed/vector_store")
 

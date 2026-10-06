@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pymupdf
 
-
 PDF_PATH = Path("data/raw/egyptian_civil_code.pdf")
 
 ARABIC_DIGITS = str.maketrans(

@@ -1,6 +1,5 @@
 from prometheus_client import Counter, Histogram
 
-
 rag_requests_total = Counter(
     "rag_requests_total",
     "Total number of RAG requests",

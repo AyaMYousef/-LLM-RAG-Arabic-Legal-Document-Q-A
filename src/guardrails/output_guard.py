@@ -1,6 +1,5 @@
 import re
 
-
 ARTICLE_PATTERNS = [
     r"المادة\s+\d+",
     r"مادة\s+\d+",

@@ -5,7 +5,6 @@ import re
 from pathlib import Path
 
 import pymupdf
-
 from corpus_helpers import extract_hierarchy, extract_page_lines, is_bold_line
 
 PDF_PATH = Path("data/raw/egyptian_civil_code.pdf")
@@ -474,12 +473,8 @@ def extract_language_articles(
                     direct_number = int(digits)
 
 
-                    if article_number in {
-                        reversed_number,
-                        direct_number,
-                    }:
-                        if len(cleaned) <= 30:
-                            exact_candidates.append(index)
+                if article_number in {reversed_number, direct_number} and len(cleaned) <= 30:
+                        exact_candidates.append(index)
 
         if exact_candidates:
             selected[article_number] = exact_candidates[0]
@@ -731,52 +726,7 @@ def build_article_records(
 
     return records
 
-def extract_page_lines(page, page_number: int) -> list[dict]:
-    """Extract English / Arabic lines with their page coordinates."""
 
-    lines = []
-
-    for block in page.get_text("dict")["blocks"]:
-        if "lines" not in block:
-            continue
-
-        for line in block["lines"]:
-            spans = line["spans"]
-
-            if not spans:
-                continue
-
-            text = normalize_spaces(
-                "".join(span["text"] for span in spans)
-            )
-
-            if not text:
-                continue
-
-            x = spans[0]["bbox"][0]
-            y = spans[0]["bbox"][1]
-
-            lines.append(
-            {
-                "page": page_number,
-                "x": x,
-                "y": y,
-                "text": text,
-                "spans": [
-                    {
-                        "text": span["text"],
-                        "font": span["font"],
-                        "size": span["size"],
-                        "flags": span["flags"],
-                    }
-                    for span in spans
-                ],
-            }
-        )
-
-    lines.sort(key=lambda item: (item["y"], item["x"]))
-
-    return lines
 
 def debug_hierarchy_pages():
     doc = pymupdf.open("data/raw/egyptian_civil_code.pdf")

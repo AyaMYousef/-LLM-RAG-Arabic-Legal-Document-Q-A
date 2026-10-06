@@ -1,6 +1,5 @@
 from src.guardrails.pii import redact_pii
 
-
 CLEAN_ARABIC_CASES = [
     "العقد بين محمد علي وأحمد محمد.",
     "يجوز للمالك التصرف في ملكه وفقاً للقانون.",

@@ -1,34 +1,32 @@
 from __future__ import annotations
+
+import os
+import time
+
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from langfuse import get_client
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
 
-from src.rag.context_builder import build_context
-from src.rag.mock_generator import MockGenerator
-from src.rag.prompt_builder import SYSTEM_PROMPT, build_prompt
-from src.rag.retriever import Retriever
-from fastapi import HTTPException
 from src.guardrails.input_guard import validate_input
-from src.guardrails.output_guard import validate_output
-from src.guardrails.pii import redact_pii
 from src.guardrails.metrics import (
     guardrail_decisions_total,
     guardrail_latency_seconds,
 )
-import time
-
+from src.guardrails.output_guard import validate_output
+from src.guardrails.pii import redact_pii
 from src.monitoring.metrics import (
     rag_errors_total,
     rag_llm_latency_seconds,
     rag_requests_total,
     rag_retrieval_latency_seconds,
 )
-
-import os
-from langfuse import get_client
 from src.rag.api_generator import APIGenerator
+from src.rag.context_builder import build_context
 from src.rag.mock_generator import MockGenerator
-from prometheus_fastapi_instrumentator import Instrumentator
+from src.rag.prompt_builder import SYSTEM_PROMPT, build_prompt
+from src.rag.retriever import Retriever
 
 load_dotenv()
 langfuse = get_client()

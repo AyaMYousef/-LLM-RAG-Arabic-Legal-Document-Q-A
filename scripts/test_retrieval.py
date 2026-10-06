@@ -3,7 +3,6 @@ from __future__ import annotations
 from src.ingestion.embedder import Embedder
 from src.ingestion.vector_store import FAISSVectorStore
 
-
 TEST_QUERIES = [
     {
         "query": "What happens when there is no applicable legal provision?",

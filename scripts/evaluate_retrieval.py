@@ -6,7 +6,6 @@ from sentence_transformers import SentenceTransformer
 
 from src.ingestion.vector_store import FAISSVectorStore
 
-
 MODEL_NAME = "intfloat/multilingual-e5-base"
 INDEX_DIR = "data/processed/vector_store_e5"
 

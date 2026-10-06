@@ -5,7 +5,6 @@ import random
 import re
 from pathlib import Path
 
-
 INPUT_PATH = Path("data/processed/corpus_raw.json")
 REPORT_PATH = Path("reports/corpus_validation.txt")
 
@@ -72,7 +71,7 @@ def load_corpus() -> list[dict]:
         data = json.load(file)
 
     if not isinstance(data, list):
-        raise ValueError(
+        raise TypeError(
             "Corpus root must be a JSON list."
         )
 

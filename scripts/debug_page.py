@@ -1,7 +1,5 @@
 import pymupdf
-
 from corpus_helpers import extract_page_lines
-
 
 doc = pymupdf.open("data/raw/egyptian_civil_code.pdf")
 

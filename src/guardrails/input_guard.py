@@ -1,6 +1,5 @@
 import re
 
-
 LEGAL_KEYWORDS_AR = [
     "قانون",
     "القانون",

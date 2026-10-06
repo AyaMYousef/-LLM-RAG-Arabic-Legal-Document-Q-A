@@ -1,7 +1,6 @@
-from src.rag.retriever import Retriever
 from src.rag.context_builder import build_context
 from src.rag.prompt_builder import SYSTEM_PROMPT, build_prompt
-
+from src.rag.retriever import Retriever
 
 retriever = Retriever()
 

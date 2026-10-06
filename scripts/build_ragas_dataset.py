@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
 QUESTIONS_PATH = Path("data/evaluation/ragas_questions.json")
 CORPUS_PATH = Path("data/processed/corpus_raw.json")
 OUTPUT_PATH = Path("data/evaluation/ragas_dataset.json")

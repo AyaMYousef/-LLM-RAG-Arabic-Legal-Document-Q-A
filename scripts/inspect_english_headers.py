@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pymupdf
 
-
 PDF_PATH = Path("data/raw/egyptian_civil_code.pdf")
 
 Y_TOLERANCE = 2.0

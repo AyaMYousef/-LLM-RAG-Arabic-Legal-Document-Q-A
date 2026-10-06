@@ -4,7 +4,6 @@ from sentence_transformers import SentenceTransformer
 
 from src.ingestion.vector_store import FAISSVectorStore
 
-
 MODEL_NAME = "intfloat/multilingual-e5-base"
 
 TEST_QUERIES = [

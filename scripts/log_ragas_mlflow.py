@@ -1,5 +1,6 @@
-from pathlib import Path
 import json
+from pathlib import Path
+
 import mlflow
 
 RESULTS_FILE = Path("data/evaluation/ragas_results.json")

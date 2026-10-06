@@ -8,7 +8,6 @@ from sentence_transformers import SentenceTransformer
 from src.ingestion.chunker import build_chunks
 from src.ingestion.vector_store import FAISSVectorStore
 
-
 CORPUS_PATH = Path("data/processed/corpus_raw.json")
 INDEX_DIR = Path("data/processed/vector_store_e5")
 MODEL_NAME = "intfloat/multilingual-e5-base"

@@ -5,7 +5,6 @@ from pathlib import Path
 
 from src.rag.retriever import Retriever
 
-
 INPUT_PATH = Path("data/evaluation/ragas_dataset.json")
 OUTPUT_PATH = Path("data/evaluation/ragas_inputs.json")
 
