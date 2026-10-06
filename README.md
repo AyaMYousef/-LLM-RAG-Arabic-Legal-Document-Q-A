@@ -2101,3 +2101,8 @@ GitHub Push / Pull Request
 - Add deployment automation
 
 Docker image publishing and deployment are **not yet part of the GitHub Actions workflow**.
+
+
+## Final Architecture
+
+See [Final MLOps Architecture](docs/architecture.md) for the complete system architecture, serving, evaluation, observability, monitoring, CI/CD, and optimization design.
