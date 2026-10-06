@@ -60,4 +60,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/arabic-legal-rag:latest
+          tags: ghcr.io/${{ secrets.GHCR_OWNER }}/arabic-legal-rag:latest
