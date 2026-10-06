@@ -61,3 +61,6 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ secrets.GHCR_OWNER }}/arabic-legal-rag:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
