@@ -16,6 +16,7 @@ with mlflow.start_run(run_name="ragas-baseline"):
         "faithfulness": metrics["faithfulness"],
         "context_precision": metrics["context_precision"],
         "context_recall": metrics["context_recall"],
+        "answer_relevancy": metrics["answer_relevancy"],
     })
 
     mlflow.log_param("embedding_model", "intfloat/multilingual-e5-base")
