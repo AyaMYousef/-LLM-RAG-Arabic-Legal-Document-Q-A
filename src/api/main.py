@@ -6,6 +6,7 @@ from collections.abc import Iterator
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from openai import RateLimitError
 from fastapi.responses import StreamingResponse
 from langfuse import get_client
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -169,10 +170,17 @@ def ask(request: AskRequest) -> AskResponse:
                 },
             ) as generation:
 
-               answer = generator.generate(
-                SYSTEM_PROMPT,
-                user_prompt,
-            )
+              try:
+                    answer = generator.generate(
+                        SYSTEM_PROMPT,
+                        user_prompt,
+                    )
+              except RateLimitError as exc:
+                    rag_errors_total.inc()
+                    raise HTTPException(
+                        status_code=503,
+                        detail="The upstream LLM service is temporarily rate-limited.",
+                    ) from exc
 
             pii_start = time.perf_counter()
 
