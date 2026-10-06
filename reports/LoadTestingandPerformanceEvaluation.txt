@@ -1,0 +1,251 @@
+# Load Testing and Performance Evaluation
+
+## 1. Objective
+
+Load testing was performed to evaluate the reliability and performance of the Arabic Legal RAG API under different levels of concurrency.
+
+The tests focused on the `/ask` endpoint, which executes the complete RAG pipeline:
+
+1. Receive and validate the user question.
+2. Retrieve relevant Egyptian Civil Code articles using multilingual embeddings.
+3. Build the retrieved context.
+4. Construct the LLM prompt.
+5. Send the request to the external LLM service.
+6. Return the generated Arabic answer together with the retrieved legal sources.
+
+Locust was used as the load-testing framework.
+
+---
+
+## 2. Test Environment
+
+| Component | Configuration |
+|---|---|
+| API | FastAPI |
+| Endpoint | `POST /ask` |
+| Load testing | Locust 2.46.7 |
+| Deployment | Local API |
+| Host | `127.0.0.1:8000` |
+| Test client | Locust headless mode |
+| LLM | External API service |
+| Retrieval | Multilingual E5-based retrieval |
+
+---
+
+## 3. Baseline Test — 1 Concurrent User
+
+### Test configuration
+
+```bash
+uv run locust -f locustfile.py --headless -u 1 -r 1 -t 15s --host http://127.0.0.1:8000
+```
+
+Where:
+
+- `-u 1`: one concurrent user
+- `-r 1`: users spawned at one user per second
+- `-t 15s`: 15-second test duration
+
+### Results
+
+| Metric | Result |
+|---|---:|
+| Concurrent users | 1 |
+| Total requests | 8 |
+| Failed requests | 0 |
+| Failure rate | **0%** |
+| Average response time | **494 ms** |
+| Minimum response time | **356 ms** |
+| Maximum response time | **772 ms** |
+| Median response time | **500 ms** |
+| Throughput | **0.62 requests/sec** |
+
+### Interpretation
+
+The baseline test completed successfully with **zero failed requests**.
+
+All eight requests to `/ask` returned successfully, demonstrating that the complete RAG and LLM pipeline operates reliably under low concurrency.
+
+The observed response time remained below one second, with an average of approximately **494 ms**.
+
+This test establishes the baseline performance of the application before increasing concurrency.
+
+---
+
+## 4. Concurrent Load Test — 5 Users
+
+### Test configuration
+
+```bash
+uv run locust -f locustfile.py --headless -u 5 -r 1 -t 30s --host http://127.0.0.1:8000
+```
+
+Where:
+
+- `-u 5`: five concurrent users
+- `-r 1`: users ramped up at one user per second
+- `-t 30s`: 30-second test duration
+
+### Results
+
+| Metric | Result |
+|---|---:|
+| Concurrent users | 5 |
+| Total requests | 12 |
+| Successful requests | 9 |
+| Failed requests | 3 |
+| Failure rate | **25%** |
+| Average response time | **5.088 s** |
+| Minimum response time | **348 ms** |
+| Maximum response time | **14.916 s** |
+| Median response time | **1.8 s** |
+| Throughput | **0.54 requests/sec** |
+| Failure type | **HTTP 503** |
+
+Locust reported:
+
+```text
+3 POST /ask: Unexpected status code: 503
+```
+
+The test exited with code `1` because Locust detected failed requests.
+
+---
+
+## 5. Performance Comparison
+
+| Metric | 1 User | 5 Users |
+|---|---:|---:|
+| Requests | 8 | 12 |
+| Failures | 0 | 3 |
+| Failure rate | **0%** | **25%** |
+| Average latency | **494 ms** | **5.088 s** |
+| Median latency | **500 ms** | **1.8 s** |
+| Maximum latency | **772 ms** | **14.916 s** |
+| Throughput | **0.62 req/s** | **0.54 req/s** |
+
+Increasing concurrency resulted in a substantial increase in response latency and introduced HTTP 503 failures.
+
+---
+
+## 6. Error Handling and Reliability
+
+During development, upstream LLM rate-limit conditions initially resulted in HTTP 500 responses.
+
+The API error handling was improved so that temporary upstream availability/rate-limit conditions are represented as HTTP 503 responses instead of generic internal-server errors.
+
+The resulting behavior is:
+
+```text
+External LLM rate limit / temporary unavailability
+                    ↓
+              API exception handling
+                    ↓
+                HTTP 503
+```
+
+This distinction is important because HTTP 503 correctly indicates that the service is temporarily unable to fulfill the request due to an unavailable dependency.
+
+The final load test therefore demonstrates two different conditions:
+
+- **1 user:** no failures and stable response times.
+- **5 users:** upstream-related HTTP 503 failures under increased concurrency.
+
+---
+
+## 7. Scalability Observation
+
+The results indicate that the current end-to-end system is constrained by the external LLM dependency when concurrency increases.
+
+At one concurrent user, the system achieved:
+
+**0% failure rate and 494 ms average latency.**
+
+At five concurrent users, the failure rate increased to:
+
+**25%**
+
+while average observed latency increased to:
+
+**5.088 seconds.**
+
+The maximum observed latency reached approximately:
+
+**14.9 seconds.**
+
+This indicates that increasing concurrency does not currently result in proportional throughput improvement.
+
+The limiting factor is the external LLM service and its rate/token/concurrency constraints rather than evidence of an application-level HTTP 500 failure.
+
+---
+
+## 8. Key Findings
+
+### Finding 1 — The API is functional
+
+The single-user test successfully processed eight requests with zero failures.
+
+### Finding 2 — Low-concurrency performance is acceptable
+
+The baseline average response time was approximately 494 ms, with all requests completing within 772 ms.
+
+### Finding 3 — Higher concurrency exposes an external dependency limitation
+
+At five concurrent users, three of twelve requests failed with HTTP 503.
+
+### Finding 4 — Error handling is more production-oriented
+
+The upstream failure is now represented as HTTP 503 rather than an unhandled HTTP 500 error.
+
+### Finding 5 — Latency increases significantly under concurrency
+
+The average observed latency increased from approximately 0.49 seconds to 5.09 seconds when moving from one to five concurrent users.
+
+---
+
+## 9. Recommended Production Improvements
+
+Based on the load-testing results, the following improvements are recommended for production deployment:
+
+1. **Concurrency control**  
+   Limit the number of simultaneous LLM requests to avoid overwhelming the upstream provider.
+
+2. **Retry with exponential backoff**  
+   Temporarily retry recoverable upstream failures rather than immediately failing the request.
+
+3. **Timeout management**  
+   Configure explicit timeouts for external LLM requests.
+
+4. **Monitoring**  
+   Track:
+   - API request latency
+   - retrieval latency
+   - LLM latency
+   - HTTP 5xx/503 rate
+   - token usage
+   - upstream rate-limit events
+
+5. **Production LLM capacity**  
+   Use an LLM service tier with sufficient token and concurrency capacity for the expected workload.
+
+6. **Fallback strategy**  
+   Consider a fallback LLM or controlled degraded response when the primary provider becomes unavailable.
+
+7. **Separate component-level metrics**  
+   Measure retrieval and generation independently to determine exactly where latency is introduced.
+
+---
+
+## 10. Conclusion
+
+The load-testing phase successfully established a baseline for the Arabic Legal RAG API and identified its current scalability limitation.
+
+Under one concurrent user, the API processed **8 requests with a 0% failure rate**, achieving an average response time of **494 ms**.
+
+When the load was increased to five concurrent users, the API processed **12 requests**, of which **9 succeeded and 3 returned HTTP 503**, resulting in a **25% failure rate**. Average observed latency increased to **5.088 seconds**, with a maximum of approximately **14.9 seconds**.
+
+The results demonstrate that the core API and RAG pipeline are operational under low concurrency. Under higher concurrency, the primary limitation is the external LLM dependency and its service limits.
+
+The implemented error handling ensures that upstream availability problems are communicated using an appropriate **HTTP 503 Service Unavailable** response rather than being exposed as generic internal application failures.
+
+Overall, the testing demonstrates a working production-oriented RAG service with measured performance characteristics, explicit dependency failure handling, and a clearly identified scalability boundary.
