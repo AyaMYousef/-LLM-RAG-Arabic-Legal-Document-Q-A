@@ -49,3 +49,8 @@ include = ["src*"]
 minversion = "7.0"
 addopts = "-ra -q"
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "locust>=2.46.0",
+]
