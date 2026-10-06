@@ -3,11 +3,14 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Iterator
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+from openai import RateLimitError
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from openai import RateLimitError
-from fastapi.responses import StreamingResponse
+
+
+
 from langfuse import get_client
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
