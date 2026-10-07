@@ -7,7 +7,7 @@ A production-ready RAG pipeline built for querying bilingual Arabic/English lega
 
 ---
 
-## 🛠 Project Structure
+##  Project Structure
 
 ```text
 arabic-legal-rag/
@@ -37,7 +37,7 @@ arabic-legal-rag/
 
 ---
 
-## 🚀 Quickstart & Setup
+##  Quickstart & Setup
 
 ### 1. Prerequisites
 
@@ -84,7 +84,7 @@ dvc pull
 
 ---
 
-## ⚙️ How the Ingestion Pipeline Works
+##  How the Ingestion Pipeline Works
 
 ```text
 [Raw PDF] ──> Spatial Layout Extraction (PyMuPDF)
@@ -103,7 +103,7 @@ dvc pull
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 Run unit tests to verify normalization and parsing logic:
 
@@ -114,7 +114,7 @@ pytest
 
 ---
 
-## 📑 Target Data Schema
+##  Target Data Schema
 
 The extracted output is formatted to match the required document specification:
 
