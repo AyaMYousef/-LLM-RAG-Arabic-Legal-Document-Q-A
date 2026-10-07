@@ -1,8 +1,7 @@
-Here is a concise `README.md` documenting everything built so far, serving as an onboarding and execution guide for your project repository.
 
----
+# Arabic Legal Document Q&A (RAG) 
 
-# Arabic Legal Document Q&A (RAG) — Phase 1: Ingestion & Extraction
+##Phase 1: Ingestion & Extraction
 
 A production-ready RAG pipeline built for querying bilingual Arabic/English legal corpora—specifically the **Egyptian Civil Code (Law of 1948)**. This repository houses Phase 1: converting raw, unstructured, two-column PDF documents into clean, structured, and validated JSON data ready for vector database indexing.
 
