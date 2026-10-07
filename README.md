@@ -10,26 +10,73 @@ accurately and with citations. Hallucinations are legally unacceptable.
 
 ```text
 arabic-legal-rag/
+│
 ├── data/
-│   ├── raw/                  # Raw bilingual PDF (tracked by DVC)
-│   └── processed/            # Structured civil_code_articles.json (tracked by DVC)
+│   ├── raw/
+│   │   └── egyptian_civil_code.pdf
+│   │
+│   └── processed/
+│       └── civil_code_articles.json
+│
 ├── src/
 │   ├── __init__.py
+│   │
 │   ├── extraction/
 │   │   ├── __init__.py
-│   │   ├── schema.py         # Pydantic v2 data models & validation
-│   │   ├── normalizer.py     # Arabic text, diacritics & numeral conversion
-│   │   └── pdf_parser.py     # Column-aware spatial PDF extractor
+│   │   ├── schema.py
+│   │   ├── normalizer.py
+│   │   └── pdf_parser.py
+│   │
+│   ├── ingestion/
+│   │   ├── __init__.py
+│   │   └── pipeline.py
+│   │
+│   ├── rag/
+│   │   ├── __init__.py
+│   │   ├── retriever.py
+│   │   ├── context_builder.py
+│   │   ├── prompt_builder.py
+│   │   └── generator.py
+│   │
 │   └── utils/
 │       ├── __init__.py
-│       └── logger.py         # Structured pipeline logging
-├── tests/
-│   ├── test_normalizer.py    # Unit tests for text & digit normalization
-│   └── test_extraction.py    # Integration tests on sample pages
+│       └── logger.py
+│
 ├── scripts/
-│   └── run_pipeline.py       # Main ingestion runner
+│   ├── prepare_corpus.py
+│   ├── validate_corpus.py
+│   └── run_pipeline.py
+│
+├── tests/
+│   ├── test_normalizer.py
+│   ├── test_extraction.py
+│   ├── test_ingestion.py
+│   └── test_rag.py
+│
+├── docs/
+│   ├── architecture.md
+│   └── evaluation.md
+│
+├── reports/
+│   └── ...
+│
+├── prometheus/
+│   └── ...
+│
+├── .github/
+│   └── workflows/
+│
+├── data.dvc / *.dvc
+├── dvc.yaml
+├── dvc.lock
+├── Dockerfile
+├── docker-compose.yml
+├── locustfile.py
+├── pyproject.toml
+├── uv.lock
+├── .env.Example
 ├── .gitignore
-├── pyproject.toml            # PEP 621 dependencies & project metadata
+├── .dvcignore
 └── README.md
 
 ```
