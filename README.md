@@ -1,10 +1,9 @@
 
 # Arabic Legal Document Q&A (RAG) 
 
-## Ingestion & Extraction
-
-A production-ready RAG pipeline built for querying bilingual Arabic/English legal corpora—specifically the **Egyptian Civil Code (Law of 1948)**. This repository houses Phase 1: converting raw, unstructured, two-column PDF documents into clean, structured, and validated JSON data ready for vector database indexing.
-
+The business problem. A law firm or government authority in the Arab world needs a system that answers
+questions about Arabic legal documents — contracts, Egyptian Civil Code articles, Saudi regulations —
+accurately and with citations. Hallucinations are legally unacceptable.
 ---
 
 ##  Project Structure
