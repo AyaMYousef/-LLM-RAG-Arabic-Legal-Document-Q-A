@@ -723,9 +723,6 @@ Retrieved Legal Text
 LLM-Ready Context
 ```
 
-The LLM generation layer has intentionally not yet been added. The next stage is to build the prompt layer and connect an LLM that generates a grounded answer with article-level sources.
-
-
 ## Vector Index and Reproducibility
 
 After preparing and validating the structured legal corpus, the next step is to build the semantic retrieval index.
@@ -2144,9 +2141,6 @@ GitHub Push / Pull Request
 - Add the RAGAS quality gate
 - Configure required API credentials through GitHub Actions Secrets
 - Add deployment automation
-
-Docker image publishing and deployment are **not yet part of the GitHub Actions workflow**.
-
 
 ## Final Architecture
 
