@@ -377,6 +377,46 @@ This avoids maintaining two separate RAG implementations.
 
 ## 7. Evaluation Layer
 
+### Batched RAGAS Evaluation
+
+To reduce API rate-limit errors when evaluating the 50-question Arabic legal QA dataset, the project provides a batched evaluation script.
+
+**Configuration**
+
+- **LLM provider:** Groq API (OpenAI-compatible endpoint)
+- **Evaluation model:** `qwen/qwen3.8-27b`
+- **Evaluation dataset:** 50 legal questions with generated answers and retrieved contexts
+- **Batch size:** 5 questions per batch
+- **Delay between batches:** 60 seconds
+- **Rate-limit retries:** Exponential backoff, starting at 60 seconds
+- **Metrics:** Faithfulness, Context Precision, Context Recall, and Answer Relevancy
+
+**Run the evaluation**
+
+From the repository root, run:
+
+```bash
+uv run python scripts/evaluate_ragas_batched.py
+```
+
+The evaluator processes the dataset in batches, saves a checkpoint after each successfully completed batch, and retries detected rate-limit errors with increasing delays.
+
+**Output files**
+
+| File | Description |
+|---|---|
+| `data/evaluation/ragas_checkpoint.json` | Progress and per-question results saved after each successful batch |
+| `data/evaluation/ragas_results_batched.json` | Final evaluation results, aggregate metrics, and per-question scores |
+| `data/evaluation/ragas_responses.json` | Input questions, generated answers, retrieved contexts, and reference answers |
+
+The batched evaluation writes to separate output files and does not overwrite the original `data/evaluation/ragas_results.json`.
+
+**Evaluation validation**
+
+The script reports numeric score counts for each metric after every batch. Review these counts to identify missing scores before interpreting aggregate results. An evaluation that finishes processing all questions does not necessarily mean every metric score is valid.
+
+**Important limitation:** The current script saves checkpoints but does not automatically resume from them after interruption. Rerunning the script starts evaluation from the first batch. The delay and retry settings reduce request bursts but cannot guarantee that provider rate limits will not be reached.
+
 RAG quality is evaluated using RAGAS.
 
 The evaluation dataset contains legal questions with reference information.
@@ -800,6 +840,8 @@ vLLM, AWQ, streaming, guardrails, and load testing can be introduced without red
 | Optimization | vLLM / AWQ | Efficient inference |
 
 ---
+
+
 
 ## 18. Architecture Status
 
