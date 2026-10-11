@@ -1,5 +1,5 @@
-from pathlib import Path
 import os
+from pathlib import Path
 
 # Set before importing torch.
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "0"
@@ -8,10 +8,9 @@ import numpy as np
 import onnx
 import onnxruntime as ort
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from sentence_transformers import SentenceTransformer
-
+from torch import nn
 
 MODEL_NAME = "intfloat/multilingual-e5-base"
 OUTPUT_PATH = Path("data/processed/e5_onnx/model.onnx")
