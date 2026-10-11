@@ -32,6 +32,8 @@ dependencies = [
     "langfuse>=4.17.0",
     "bentoml>=1.4.39",
     "prometheus-fastapi-instrumentator>=8.1.0",
+    "onnx>=1.23.2",
+    "onnxruntime>=1.24.3",
 ]
 
 [project.optional-dependencies]
