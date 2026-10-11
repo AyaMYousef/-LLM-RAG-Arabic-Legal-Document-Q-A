@@ -2102,6 +2102,26 @@ GitHub Push / Pull Request
 
 Docker image publishing and deployment are **not yet part of the GitHub Actions workflow**.
 
+### Limitations
+
+### Groq API Rate Limit During RAGAS Evaluation
+
+During the batched RAGAS evaluation, the evaluation process encountered a **Groq API rate-limit error (HTTP 429)** while using the `qwen/qwen3.8-27b` model as the evaluator LLM.
+
+**Error details:**
+- **Provider:** Groq API
+- **Model:** `qwen/qwen3.8-27b`
+- **Rate-limit type:** Tokens per day (TPD)
+- **Daily token limit:** 200,000
+- **Tokens consumed at the time of the error:** 199,339
+- **Tokens requested by the failed operation:** 2,423
+- **Suggested wait time:** Approximately 12 minutes and 41 seconds
+
+The request exceeded the remaining daily token allowance, resulting in a rate-limit exception. This interrupted the current evaluation batch before it could complete successfully.
+
+**Mitigation:** The evaluation script processes questions in batches of five, introduces a 60-second delay between successful batches, and retries detected rate-limit errors using exponential backoff. However, these measures cannot prevent daily quota exhaustion. The evaluation must resume after sufficient quota becomes available or continue with an evaluator model or API plan that has adequate token capacity.
+
+**Impact on evaluation results:** Only successfully completed batches should be included in the reported evaluation results. The checkpoint file preserves completed batches, but the interrupted batch must be verified before treating the full 50-question evaluation as complete. Final aggregate metrics should be reported only after all 50 questions have valid results for the four metrics: faithfulness, context precision, context recall, and answer relevancy.
 
 ## Final Architecture
 
