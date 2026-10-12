@@ -39,9 +39,7 @@ def main() -> None:
         raise ValueError("No chunks were created.")
 
     if len(chunks) != len(articles):
-        raise ValueError(
-            "Number of chunks does not match number of articles."
-        )
+        raise ValueError("Number of chunks does not match number of articles.")
 
     # ------------------------------------------------------------------
     # 3. Load embedding model
@@ -78,13 +76,13 @@ def main() -> None:
     print("\n[5/5] Building FAISS index...")
 
     metadata = [
-    {
-        **chunk["metadata"],
-        "text_en": article.get("text_en"),
-        "text_ar": article.get("text_ar"),
-    }
-    for article, chunk in zip(articles, chunks)
-]
+        {
+            **chunk["metadata"],
+            "text_en": article.get("text_en"),
+            "text_ar": article.get("text_ar"),
+        }
+        for article, chunk in zip(articles, chunks)
+    ]
     store = FAISSVectorStore(
         dimension=embedder.dimension,
     )
@@ -106,9 +104,7 @@ def main() -> None:
     # Final verification
     # ------------------------------------------------------------------
     if store.index.ntotal != len(chunks):
-        raise ValueError(
-            "FAISS index size does not match number of chunks."
-        )
+        raise ValueError("FAISS index size does not match number of chunks.")
 
     print("\n" + "=" * 80)
     print("INDEX BUILD COMPLETE")

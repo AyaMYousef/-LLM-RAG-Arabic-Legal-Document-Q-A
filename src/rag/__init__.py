@@ -7,6 +7,7 @@ from src.ingestion.vector_store import FAISSVectorStore
 
 DEFAULT_E5_MODEL = "intfloat/multilingual-e5-base"
 
+
 def __init__(
     self,
     vector_store_path: str = "data/processed/vector_store_e5",

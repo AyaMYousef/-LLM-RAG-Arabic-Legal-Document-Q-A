@@ -49,10 +49,7 @@ def contains_latin(text: str) -> bool:
 
 def is_repealed(article_number: int) -> bool:
     """Return True if the article belongs to a known repealed range."""
-    return any(
-        article_number in repealed_range
-        for repealed_range in REPEALED_RANGES
-    )
+    return any(article_number in repealed_range for repealed_range in REPEALED_RANGES)
 
 
 def extract_spans(page: pymupdf.Page) -> list[dict]:
@@ -123,8 +120,7 @@ def reconstruct_english_lines(spans: list[dict]) -> list[dict]:
     english_spans = [
         span
         for span in spans
-        if contains_latin(span["text"])
-        and not contains_arabic(span["text"])
+        if contains_latin(span["text"]) and not contains_arabic(span["text"])
     ]
 
     groups = group_spans_by_y(english_spans)
@@ -137,9 +133,7 @@ def reconstruct_english_lines(spans: list[dict]) -> list[dict]:
             key=lambda span: span["x0"],
         )
 
-        text = normalize_spaces(
-            " ".join(span["text"] for span in ordered)
-        )
+        text = normalize_spaces(" ".join(span["text"] for span in ordered))
 
         lines.append(
             {
@@ -161,8 +155,7 @@ def reconstruct_arabic_lines(spans: list[dict]) -> list[dict]:
     arabic_spans = [
         span
         for span in spans
-        if contains_arabic(span["text"])
-        and not contains_latin(span["text"])
+        if contains_arabic(span["text"]) and not contains_latin(span["text"])
     ]
 
     groups = group_spans_by_y(arabic_spans)
@@ -176,9 +169,7 @@ def reconstruct_arabic_lines(spans: list[dict]) -> list[dict]:
             reverse=True,
         )
 
-        text = normalize_spaces(
-            " ".join(span["text"] for span in ordered)
-        )
+        text = normalize_spaces(" ".join(span["text"] for span in ordered))
 
         lines.append(
             {
@@ -204,6 +195,7 @@ def detect_english_article(text: str) -> int | None:
 
     return int(match.group(1))
 
+
 def detect_arabic_article(text: str) -> int | None:
     text = normalize_spaces(text)
     text = re.sub(r"[()\[\]{}]", " ", text)
@@ -224,14 +216,9 @@ def detect_arabic_article(text: str) -> int | None:
     # Reverse each group separately, then concatenate them.
     groups = re.findall(r"[0-9]+", digits)
 
-    normalized_number = "".join(
-        group[::-1]
-        for group in groups
-    )
+    normalized_number = "".join(group[::-1] for group in groups)
 
     return int(normalized_number)
-
-
 
 
 def reconstruct_language_lines(
@@ -244,15 +231,13 @@ def reconstruct_language_lines(
         selected = [
             span
             for span in spans
-            if contains_latin(span["text"])
-            and not contains_arabic(span["text"])
+            if contains_latin(span["text"]) and not contains_arabic(span["text"])
         ]
     elif language == "ar":
         selected = [
             span
             for span in spans
-            if contains_arabic(span["text"])
-            and not contains_latin(span["text"])
+            if contains_arabic(span["text"]) and not contains_latin(span["text"])
         ]
     else:
         raise ValueError(f"Unsupported language: {language}")
@@ -268,9 +253,7 @@ def reconstruct_language_lines(
             reverse=(language == "ar"),
         )
 
-        text = normalize_spaces(
-            " ".join(span["text"] for span in ordered)
-        )
+        text = normalize_spaces(" ".join(span["text"] for span in ordered))
 
         lines.append(
             {
@@ -384,7 +367,7 @@ def extract_language_articles(
 
     expected = sorted(expected_article_numbers())
     expected_set = set(expected)
-    
+
     candidates: dict[int, list[int]] = {}
 
     for index, line in enumerate(lines):
@@ -418,22 +401,14 @@ def extract_language_articles(
         if not article_candidates:
             continue
 
-        previous_article = (
-            expected[position - 1]
-            if position > 0
-            else None
-        )
+        previous_article = expected[position - 1] if position > 0 else None
 
         previous_index = (
-            selected.get(previous_article, -1)
-            if previous_article is not None
-            else -1
+            selected.get(previous_article, -1) if previous_article is not None else -1
         )
 
         valid_candidates = [
-            index
-            for index in article_candidates
-            if index > previous_index
+            index for index in article_candidates if index > previous_index
         ]
 
         if not valid_candidates:
@@ -461,9 +436,9 @@ def extract_language_articles(
 
             elif language == "ar":
                 match = re.match(
-                r"^(?:مادة|ما\s*دة|م\s*ادة|ماد\s*ة)\s+([٠-٩0-9][٠-٩0-9\s]*)\b",
-                cleaned,
-            )
+                    r"^(?:مادة|ما\s*دة|م\s*ادة|ماد\s*ة)\s+([٠-٩0-9][٠-٩0-9\s]*)\b",
+                    cleaned,
+                )
 
                 if match:
                     digits = normalize_digits(match.group(1))
@@ -472,9 +447,11 @@ def extract_language_articles(
                     reversed_number = int(digits[::-1])
                     direct_number = int(digits)
 
-
-                if article_number in {reversed_number, direct_number} and len(cleaned) <= 30:
-                        exact_candidates.append(index)
+                if (
+                    article_number in {reversed_number, direct_number}
+                    and len(cleaned) <= 30
+                ):
+                    exact_candidates.append(index)
 
         if exact_candidates:
             selected[article_number] = exact_candidates[0]
@@ -491,41 +468,35 @@ def extract_language_articles(
 
     articles: dict[int, str] = {}
 
-     # Targeted fallback for Arabic article bodies whose Arabic header
+    # Targeted fallback for Arabic article bodies whose Arabic header
     # is missing or malformed in the PDF extraction.
-   # arabic_fallbacks = {
+    # arabic_fallbacks = {
     #    1022: (101, 102),
-    #}
+    # }
 
     for position, (
         start_index,
         article_number,
     ) in enumerate(header_positions):
-
         if position + 1 < len(header_positions):
             end_index = header_positions[position + 1][0]
         else:
             end_index = len(lines)
 
-        content_lines = lines[
-            start_index + 1:end_index
-        ]
+        content_lines = lines[start_index + 1 : end_index]
 
         content = normalize_spaces(
-            " ".join(
-                line["text"]
-                for line in content_lines
-                if not is_bold_line(line)
-            )
+            " ".join(line["text"] for line in content_lines if not is_bold_line(line))
         )
 
         articles[article_number] = content
 
     return articles
 
+
 def collect_article_headers(
     doc: pymupdf.Document,
-     ) -> dict[int, dict]:
+) -> dict[int, dict]:
     """
     Collect article headers using both English and Arabic headers.
 
@@ -588,11 +559,7 @@ def expected_article_numbers() -> set[int]:
     Repealed articles are intentionally excluded because the PDF
     does not contain individual article text for those ranges.
     """
-    return {
-        number
-        for number in range(1, 1150)
-        if not is_repealed(number)
-    }
+    return {number for number in range(1, 1150) if not is_repealed(number)}
 
 
 def validate_article_headers(
@@ -605,36 +572,20 @@ def validate_article_headers(
 
     missing = sorted(expected - actual)
 
-    unexpected = sorted(
-        actual - set(range(1, 1150))
-    )
+    unexpected = sorted(actual - set(range(1, 1150)))
 
     if missing:
-        raise ValueError(
-            "Unexpected missing article headers: "
-            f"{missing}"
-        )
+        raise ValueError(f"Unexpected missing article headers: {missing}")
 
     if unexpected:
-        raise ValueError(
-            "Unexpected article numbers detected: "
-            f"{unexpected}"
-        )
+        raise ValueError(f"Unexpected article numbers detected: {unexpected}")
 
-    repealed = sorted(
-        set(range(1, 1150)) - expected
-    )
+    repealed = sorted(set(range(1, 1150)) - expected)
 
-    english_count = sum(
-        1
-        for header in headers.values()
-        if header["language"] == "en"
-    )
+    english_count = sum(1 for header in headers.values() if header["language"] == "en")
 
     arabic_fallback_count = sum(
-        1
-        for header in headers.values()
-        if header["language"] == "ar"
+        1 for header in headers.values() if header["language"] == "ar"
     )
 
     print(f"Detected article headers: {len(actual)}")
@@ -644,15 +595,14 @@ def validate_article_headers(
     print(f"Repealed article numbers: {repealed}")
 
     arabic_fallback_articles = sorted(
-        number
-        for number, header in headers.items()
-        if header["language"] == "ar"
+        number for number, header in headers.items() if header["language"] == "ar"
     )
 
     if arabic_fallback_articles:
         print()
         print("Articles detected through Arabic fallback:")
         print(arabic_fallback_articles)
+
 
 def build_article_records(
     doc: pymupdf.Document,
@@ -680,11 +630,7 @@ def build_article_records(
 
         header = headers.get(article_number)
 
-        source_page = (
-            header["page"]
-            if header is not None
-            else None
-        )
+        source_page = header["page"] if header is not None else None
 
         if repealed:
             text_ar = ""
@@ -717,15 +663,11 @@ def build_article_records(
                 "text_en": text_en,
                 "is_repealed": repealed,
                 "source_page": source_page,
-                "citation": (
-                    f"Egyptian Civil Code, "
-                    f"Article {article_number}"
-                ),
+                "citation": (f"Egyptian Civil Code, Article {article_number}"),
             }
         )
 
     return records
-
 
 
 def debug_hierarchy_pages():
@@ -742,17 +684,12 @@ def debug_hierarchy_pages():
         )
 
         for line in lines:
-            print(
-                f"Y={line['y']:8.2f} "
-                f"X={line['x']:8.2f} "
-                f"{line['text']!r}"
-            )
+            print(f"Y={line['y']:8.2f} X={line['x']:8.2f} {line['text']!r}")
+
 
 def main() -> None:
     if not PDF_PATH.exists():
-        raise FileNotFoundError(
-            f"PDF not found: {PDF_PATH}"
-        )
+        raise FileNotFoundError(f"PDF not found: {PDF_PATH}")
 
     OUTPUT_PATH.parent.mkdir(
         parents=True,
@@ -777,10 +714,14 @@ def main() -> None:
                 for span in line["spans"]:
                     print(
                         "  ",
-                        "TEXT:", repr(span["text"]),
-                        "FONT:", span["font"],
-                        "SIZE:", span["size"],
-                        "FLAGS:", span["flags"],
+                        "TEXT:",
+                        repr(span["text"]),
+                        "FONT:",
+                        span["font"],
+                        "SIZE:",
+                        span["size"],
+                        "FLAGS:",
+                        span["flags"],
                     )
 
     print(f"PDF: {PDF_PATH}")
@@ -793,119 +734,102 @@ def main() -> None:
     print("=" * 100)
 
     for article_number, metadata in hierarchy.items():
-            if (
-                metadata["topic_ar"] is None
-                or metadata["topic_en"] is None
-            ):
-                print(
-                    f"Article {article_number}: "
-                    f"book={metadata['book']!r}, "
-                    f"chapter={metadata['chapter']!r}, "
-                    f"section={metadata['section']!r}, "
-                    f"topic_ar={metadata['topic_ar']!r}, "
-                    f"topic_en={metadata['topic_en']!r}"
-                )
-
-
-            print("\nTOPIC VALUES")
-            print("=" * 100)
-
-            topics = {}
-
-            for article_number, metadata in hierarchy.items():
-                topic_en = metadata["topic_en"]
-                topics.setdefault(topic_en, []).append(article_number)
-
-            for topic_en, articles in topics.items():
-                print(f"{topic_en!r}: {len(articles)} articles")
-
-
-            print("\nSAMPLE HIERARCHY")
-            print("=" * 100)
-
-            for article_number in [
-                89,
-                90,
-                145,
-                146,
-                147,
-                148,
-                418,
-                1099,
-                1100,
-                1101,
-                1102,
-                1103,
-                1104,
-            ]:
-                print(
-                    article_number,
-                    "->",
-                    hierarchy.get(article_number),
-                )
-
-
-            headers = collect_article_headers(doc)
-
-            validate_article_headers(headers)
-
-            records = build_article_records(
-                doc,
-                headers,
-                hierarchy,
-            )
-
-            active_records = [
-                record
-                for record in records
-                if not record["is_repealed"]
-            ]
-
-            missing_arabic = [
-                record["article_number"]
-                for record in active_records
-                if not record["text_ar"].strip()
-            ]
-
-            missing_english = [
-                record["article_number"]
-                for record in active_records
-                if not record["text_en"].strip()
-            ]
-
-            print()
+        if metadata["topic_ar"] is None or metadata["topic_en"] is None:
             print(
-                f"Active articles missing Arabic text: "
-                f"{len(missing_arabic)}"
+                f"Article {article_number}: "
+                f"book={metadata['book']!r}, "
+                f"chapter={metadata['chapter']!r}, "
+                f"section={metadata['section']!r}, "
+                f"topic_ar={metadata['topic_ar']!r}, "
+                f"topic_en={metadata['topic_en']!r}"
             )
 
+        print("\nTOPIC VALUES")
+        print("=" * 100)
+
+        topics = {}
+
+        for article_number, metadata in hierarchy.items():
+            topic_en = metadata["topic_en"]
+            topics.setdefault(topic_en, []).append(article_number)
+
+        for topic_en, articles in topics.items():
+            print(f"{topic_en!r}: {len(articles)} articles")
+
+        print("\nSAMPLE HIERARCHY")
+        print("=" * 100)
+
+        for article_number in [
+            89,
+            90,
+            145,
+            146,
+            147,
+            148,
+            418,
+            1099,
+            1100,
+            1101,
+            1102,
+            1103,
+            1104,
+        ]:
             print(
-                f"Active articles missing English text: "
-                f"{len(missing_english)}"
+                article_number,
+                "->",
+                hierarchy.get(article_number),
             )
 
-            if missing_arabic:
-                print("Missing Arabic:", missing_arabic)
+        headers = collect_article_headers(doc)
 
-            if missing_english:
-                print("Missing English:", missing_english)
+        validate_article_headers(headers)
 
-            with OUTPUT_PATH.open(
-                "w",
-                encoding="utf-8",
-            ) as file:
-                json.dump(
-                    records,
-                    file,
-                    ensure_ascii=False,
-                    indent=2,
-                )
+        records = build_article_records(
+            doc,
+            headers,
+            hierarchy,
+        )
 
-            print()
-            print(f"Records written: {len(records)}")
-            print(f"Output: {OUTPUT_PATH}")
+        active_records = [record for record in records if not record["is_repealed"]]
+
+        missing_arabic = [
+            record["article_number"]
+            for record in active_records
+            if not record["text_ar"].strip()
+        ]
+
+        missing_english = [
+            record["article_number"]
+            for record in active_records
+            if not record["text_en"].strip()
+        ]
+
+        print()
+        print(f"Active articles missing Arabic text: {len(missing_arabic)}")
+
+        print(f"Active articles missing English text: {len(missing_english)}")
+
+        if missing_arabic:
+            print("Missing Arabic:", missing_arabic)
+
+        if missing_english:
+            print("Missing English:", missing_english)
+
+        with OUTPUT_PATH.open(
+            "w",
+            encoding="utf-8",
+        ) as file:
+            json.dump(
+                records,
+                file,
+                ensure_ascii=False,
+                indent=2,
+            )
+
+        print()
+        print(f"Records written: {len(records)}")
+        print(f"Output: {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
-    
     main()

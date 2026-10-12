@@ -35,9 +35,7 @@ def main() -> None:
         raise ValueError("No chunks were created.")
 
     if len(chunks) != len(articles):
-        raise ValueError(
-            "Number of chunks does not match number of articles."
-        )
+        raise ValueError("Number of chunks does not match number of articles.")
 
     print("\n[3/5] Loading E5 model...")
 
@@ -50,10 +48,7 @@ def main() -> None:
 
     print("\n[4/5] Generating E5 passage embeddings...")
 
-    texts = [
-        f"passage: {chunk['text']}"
-        for chunk in chunks
-    ]
+    texts = [f"passage: {chunk['text']}" for chunk in chunks]
 
     embeddings = model.encode(
         texts,
@@ -75,13 +70,13 @@ def main() -> None:
     print("\n[5/5] Building FAISS index...")
 
     metadata = [
-    {
-        **chunk["metadata"],
-        "text_en": article.get("text_en"),
-        "text_ar": article.get("text_ar"),
-    }
-    for article, chunk in zip(articles, chunks)
-]
+        {
+            **chunk["metadata"],
+            "text_en": article.get("text_en"),
+            "text_ar": article.get("text_ar"),
+        }
+        for article, chunk in zip(articles, chunks)
+    ]
 
     store = FAISSVectorStore(dimension=dimension)
 
@@ -102,9 +97,7 @@ def main() -> None:
     print(f"Metadata records: {len(store.metadata)}")
 
     if store.index.ntotal != len(chunks):
-        raise ValueError(
-            "FAISS index size does not match number of chunks."
-        )
+        raise ValueError("FAISS index size does not match number of chunks.")
 
     print("\n" + "=" * 80)
     print("E5 INDEX BUILD COMPLETE")

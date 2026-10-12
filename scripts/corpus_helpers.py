@@ -22,9 +22,11 @@ def contains_arabic(text: str) -> bool:
     """Return True if text contains Arabic characters."""
     return bool(re.search(r"[\u0600-\u06FF]", text))
 
+
 def is_topic_heading(line: dict) -> bool:
     """Return True when a line is a bold topic heading."""
     return is_bold_line(line)
+
 
 def is_bold_line(line: dict) -> bool:
     """
@@ -32,10 +34,7 @@ def is_bold_line(line: dict) -> bool:
 
     PyMuPDF reports flags=16 for the bold font used by the PDF.
     """
-    return any(
-        span.get("flags", 0) & 16
-        for span in line.get("spans", [])
-    )
+    return any(span.get("flags", 0) & 16 for span in line.get("spans", []))
 
 
 def extract_page_lines(page, page_number: int) -> list[dict]:
@@ -57,9 +56,7 @@ def extract_page_lines(page, page_number: int) -> list[dict]:
             if not spans:
                 continue
 
-            text = normalize_spaces(
-                "".join(span["text"] for span in spans)
-            )
+            text = normalize_spaces("".join(span["text"] for span in spans))
 
             if not text:
                 continue
@@ -129,10 +126,10 @@ def extract_hierarchy(doc) -> dict[int, dict]:
             # Article header
             # ---------------------------------------------------------
             article_match = re.match(
-            r"^A?rticle\s*(\d+)\b",
-            text,
-            re.IGNORECASE,
-        )
+                r"^A?rticle\s*(\d+)\b",
+                text,
+                re.IGNORECASE,
+            )
 
             if article_match:
                 article_number = int(article_match.group(1))

@@ -41,6 +41,7 @@ def _desktop_notify(title: str, message: str) -> None:
     """Fire a desktop toast notification if plyer is installed."""
     try:
         from plyer import notification  # type: ignore
+
         notification.notify(
             title=title,
             message=message,
@@ -70,8 +71,7 @@ def check_faithfulness(results_file: Path, threshold: float) -> int:
 
     if faithfulness >= threshold:
         print(
-            f"[alert] ✅  Faithfulness OK: {faithfulness:.4f} "
-            f"(threshold {threshold})"
+            f"[alert] ✅  Faithfulness OK: {faithfulness:.4f} (threshold {threshold})"
         )
         return 0
 

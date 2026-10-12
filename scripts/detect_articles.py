@@ -112,11 +112,7 @@ def reconstruct_language_lines(
         left -> right
     """
 
-    language_spans = [
-        span
-        for span in spans
-        if classify_span(span["text"]) == language
-    ]
+    language_spans = [span for span in spans if classify_span(span["text"]) == language]
 
     groups = group_spans_by_y(language_spans)
 
@@ -135,12 +131,7 @@ def reconstruct_language_lines(
                 key=lambda span: span["x0"],
             )
 
-        text = normalize_spaces(
-            " ".join(
-                span["text"]
-                for span in ordered
-            )
-        )
+        text = normalize_spaces(" ".join(span["text"] for span in ordered))
 
         lines.append(
             {
@@ -192,9 +183,7 @@ def detect_english_article(text: str) -> int | None:
 
 def main() -> None:
     if not PDF_PATH.exists():
-        raise FileNotFoundError(
-            f"PDF not found: {PDF_PATH}"
-        )
+        raise FileNotFoundError(f"PDF not found: {PDF_PATH}")
 
     doc = pymupdf.open(PDF_PATH)
 
@@ -215,9 +204,7 @@ def main() -> None:
         )
 
         for line_index, line in enumerate(arabic_lines):
-            article_number = detect_arabic_article(
-                line["text"]
-            )
+            article_number = detect_arabic_article(line["text"])
 
             if article_number is not None:
                 arabic_articles.append(
@@ -231,9 +218,7 @@ def main() -> None:
                 )
 
         for line_index, line in enumerate(english_lines):
-            article_number = detect_english_article(
-                line["text"]
-            )
+            article_number = detect_english_article(line["text"])
 
             if article_number is not None:
                 english_articles.append(
@@ -267,12 +252,8 @@ def main() -> None:
         )
 
     print()
-    print(
-        f"Arabic detections: {len(arabic_articles)}"
-    )
-    print(
-        f"English detections: {len(english_articles)}"
-    )
+    print(f"Arabic detections: {len(arabic_articles)}")
+    print(f"English detections: {len(english_articles)}")
 
 
 if __name__ == "__main__":

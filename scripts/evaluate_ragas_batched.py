@@ -93,9 +93,7 @@ def main():
 
                 for column in score_columns:
                     if column in batch_df:
-                        valid = pd.to_numeric(
-                            batch_df[column], errors="coerce"
-                        )
+                        valid = pd.to_numeric(batch_df[column], errors="coerce")
                         print(
                             f"  {column}: "
                             f"{valid.notna().sum()}/{len(batch_df)} "
@@ -145,9 +143,7 @@ def main():
     aggregate = {}
     for column in score_columns:
         values = pd.to_numeric(df[column], errors="coerce")
-        aggregate[column] = (
-            float(values.mean()) if values.notna().any() else None
-        )
+        aggregate[column] = float(values.mean()) if values.notna().any() else None
 
     output = {
         "num_samples": len(samples),
@@ -173,9 +169,7 @@ def main():
     print("Aggregate metrics:", json.dumps(aggregate, indent=2))
 
     if len(df) != len(samples):
-        raise RuntimeError(
-            f"Incomplete evaluation: {len(df)}/{len(samples)} rows."
-        )
+        raise RuntimeError(f"Incomplete evaluation: {len(df)}/{len(samples)} rows.")
 
 
 if __name__ == "__main__":

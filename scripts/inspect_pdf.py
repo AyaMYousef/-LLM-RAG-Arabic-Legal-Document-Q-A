@@ -46,8 +46,7 @@ def classify_block(x0: float, page_width: float) -> str:
 def inspect_pdf() -> None:
     if not PDF_PATH.exists():
         raise FileNotFoundError(
-            f"PDF not found: {PDF_PATH}\n"
-            "Place the Egyptian Civil Code PDF in data/raw/"
+            f"PDF not found: {PDF_PATH}\nPlace the Egyptian Civil Code PDF in data/raw/"
         )
 
     doc = fitz.open(PDF_PATH)

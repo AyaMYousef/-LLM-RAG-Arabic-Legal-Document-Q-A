@@ -31,9 +31,7 @@ def create_generator() -> Generator:
     if generator_type == "mock":
         return MockGenerator()
 
-    raise ValueError(
-        f"Unsupported GENERATOR value: {generator_type}"
-    )
+    raise ValueError(f"Unsupported GENERATOR value: {generator_type}")
 
 
 @bentoml.service(
@@ -41,7 +39,6 @@ def create_generator() -> Generator:
     traffic={"timeout": 120},
 )
 class LegalRAGService:
-
     def __init__(self):
         self.retriever = Retriever()
         self.generator = create_generator()

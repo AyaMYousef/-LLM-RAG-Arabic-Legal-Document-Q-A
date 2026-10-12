@@ -78,8 +78,7 @@ def reconstruct_english_lines(spans: list[dict]) -> list[dict]:
     english_spans = [
         span
         for span in spans
-        if contains_latin(span["text"])
-        and not contains_arabic(span["text"])
+        if contains_latin(span["text"]) and not contains_arabic(span["text"])
     ]
 
     groups = group_spans_by_y(english_spans)
@@ -92,9 +91,7 @@ def reconstruct_english_lines(spans: list[dict]) -> list[dict]:
             key=lambda span: span["x0"],
         )
 
-        text = normalize_spaces(
-            " ".join(span["text"] for span in ordered)
-        )
+        text = normalize_spaces(" ".join(span["text"] for span in ordered))
 
         lines.append(
             {

@@ -42,9 +42,7 @@ from mlflow.tracking import MlflowClient
 # ── paths ──────────────────────────────────────────────────────────────────
 CORPUS_PATH = PROJECT_ROOT / "data" / "processed" / "corpus_raw.json"
 EVAL_INPUTS_PATH = PROJECT_ROOT / "data" / "evaluation" / "ragas_inputs.json"
-BASELINE_RESULTS_PATH = (
-    PROJECT_ROOT / "data" / "evaluation" / "ragas_results.json"
-)
+BASELINE_RESULTS_PATH = PROJECT_ROOT / "data" / "evaluation" / "ragas_results.json"
 INDEX_DIR = PROJECT_ROOT / "data" / "processed" / "vector_store_e5"
 
 # ── constants ──────────────────────────────────────────────────────────────
@@ -62,6 +60,7 @@ CHUNK_CONFIGS: list[tuple[int, int]] = [
 ]
 
 # ── helpers ────────────────────────────────────────────────────────────────
+
 
 def load_baseline_metrics() -> dict[str, float]:
     """Return pre-computed RAGAS metrics from the committed results file."""
@@ -96,9 +95,7 @@ def build_index_for_config(
     from src.ingestion.chunker import build_chunks
     from src.ingestion.vector_store import FAISSVectorStore
 
-    print(
-        f"\n  [index] chunk_size={chunk_size}, overlap={overlap}"
-    )
+    print(f"\n  [index] chunk_size={chunk_size}, overlap={overlap}")
 
     with CORPUS_PATH.open(encoding="utf-8") as f:
         articles = json.load(f)
@@ -182,6 +179,7 @@ def run_live_ragas_eval(
     generator_type = os.getenv("GENERATOR", "mock").lower()
     if generator_type == "api":
         from src.rag.api_generator import APIGenerator
+
         generator = APIGenerator(model=os.environ["LLM_MODEL"])
     else:
         generator = MockGenerator()
@@ -239,9 +237,7 @@ def run_live_ragas_eval(
         async def aembed_query(self, text: str) -> list[float]:
             return self.embed_query(text)
 
-        async def aembed_documents(
-            self, texts: list[str]
-        ) -> list[list[float]]:
+        async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
             return self.embed_documents(texts)
 
     embeddings_ragas = _E5Embeddings()
@@ -310,18 +306,14 @@ def score_langfuse_traces(
         langfuse = Langfuse(
             secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
             public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
-            host=os.getenv(
-                "LANGFUSE_BASE_URL", "https://cloud.langfuse.com"
-            ),
+            host=os.getenv("LANGFUSE_BASE_URL", "https://cloud.langfuse.com"),
         )
 
         for item, faith in zip(eval_inputs, per_question_faithfulness):
             # Use a stable, deterministic trace-id derived from the question
             import hashlib
 
-            trace_id = hashlib.md5(
-                item["user_input"].encode("utf-8")
-            ).hexdigest()
+            trace_id = hashlib.md5(item["user_input"].encode("utf-8")).hexdigest()
 
             langfuse.score(
                 trace_id=trace_id,
@@ -340,6 +332,7 @@ def score_langfuse_traces(
 
 
 # ── main ───────────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     print("=" * 70)
@@ -376,15 +369,13 @@ def main() -> None:
                 metrics = run_live_ragas_eval(chunk_size, overlap)
                 per_q_faith: list[float] = [metrics["faithfulness"]] * NUM_EVAL_SAMPLES
             except Exception as exc:
-                print(f"  [ragas] Live eval failed ({exc}); falling back to simulated metrics.")
-                metrics = simulate_metrics_for_config(
-                    chunk_size, overlap, baseline
+                print(
+                    f"  [ragas] Live eval failed ({exc}); falling back to simulated metrics."
                 )
+                metrics = simulate_metrics_for_config(chunk_size, overlap, baseline)
                 per_q_faith = [metrics["faithfulness"]] * NUM_EVAL_SAMPLES
         else:
-            metrics = simulate_metrics_for_config(
-                chunk_size, overlap, baseline
-            )
+            metrics = simulate_metrics_for_config(chunk_size, overlap, baseline)
             per_q_faith = [metrics["faithfulness"]] * NUM_EVAL_SAMPLES
 
         print(
@@ -514,10 +505,7 @@ def main() -> None:
         REGISTRY_MODEL_NAME, "best_overlap", str(best["overlap"])
     )
 
-    print(
-        f"  Registered model version {mv.version} "
-        f"for run {best_run_id}"
-    )
+    print(f"  Registered model version {mv.version} for run {best_run_id}")
     print("\nDone.  Run `mlflow ui` to inspect experiments and the registry.")
 
 

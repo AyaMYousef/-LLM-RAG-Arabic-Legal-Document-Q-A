@@ -139,8 +139,7 @@ def main() -> None:
         )
 
         retrieved_articles = [
-            result["metadata"]["article_number"]
-            for result in results
+            result["metadata"]["article_number"] for result in results
         ]
 
         hit_1 = expected in retrieved_articles[:1]

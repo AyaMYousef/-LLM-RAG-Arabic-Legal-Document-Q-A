@@ -21,7 +21,6 @@ TEST_QUERIES = [
 def main() -> None:
     model = SentenceTransformer(MODEL_NAME)
 
-  
     store = FAISSVectorStore.load("data/processed/vector_store_e5")
 
     for test in TEST_QUERIES:

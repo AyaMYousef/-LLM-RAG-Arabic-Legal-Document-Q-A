@@ -32,9 +32,7 @@ class E5EmbeddingModel(nn.Module):
 
         token_embeddings = outputs[0]
 
-        mask = attention_mask.unsqueeze(-1).to(
-            dtype=token_embeddings.dtype
-        )
+        mask = attention_mask.unsqueeze(-1).to(dtype=token_embeddings.dtype)
 
         summed_embeddings = (token_embeddings * mask).sum(dim=1)
         token_counts = mask.sum(dim=1).clamp(min=1e-9)
@@ -135,15 +133,12 @@ def main():
             ["embeddings"],
             {
                 "input_ids": test_inputs["input_ids"].astype(np.int64),
-                "attention_mask": test_inputs["attention_mask"].astype(
-                    np.int64
-                ),
+                "attention_mask": test_inputs["attention_mask"].astype(np.int64),
             },
         )[0]
 
         assert result.shape == (batch_size, 768), (
-            f"Unexpected output shape for batch {batch_size}: "
-            f"{result.shape}"
+            f"Unexpected output shape for batch {batch_size}: {result.shape}"
         )
         assert np.isfinite(result).all()
 
@@ -170,14 +165,16 @@ def main():
     )
 
     with torch.no_grad():
-        reference_embeddings = model(
-            reference_inputs["input_ids"].cpu(),
-            reference_inputs["attention_mask"].cpu(),
-        ).cpu().numpy()
+        reference_embeddings = (
+            model(
+                reference_inputs["input_ids"].cpu(),
+                reference_inputs["attention_mask"].cpu(),
+            )
+            .cpu()
+            .numpy()
+        )
 
-    max_abs_error = np.max(
-        np.abs(onnx_embeddings - reference_embeddings)
-    )
+    max_abs_error = np.max(np.abs(onnx_embeddings - reference_embeddings))
     print(f"Maximum absolute embedding error: {max_abs_error:.8f}")
 
     np.testing.assert_allclose(

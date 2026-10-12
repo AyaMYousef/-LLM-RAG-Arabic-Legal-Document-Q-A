@@ -37,9 +37,7 @@ class FAISSVectorStore:
                 "Number of embeddings must match number of metadata records."
             )
 
-        self.index.add(
-            np.asarray(embeddings, dtype=np.float32)
-        )
+        self.index.add(np.asarray(embeddings, dtype=np.float32))
         self.metadata.extend(metadata)
 
     def search(
@@ -103,9 +101,7 @@ class FAISSVectorStore:
 
         directory = Path(directory)
 
-        index = faiss.read_index(
-            str(directory / "index.faiss")
-        )
+        index = faiss.read_index(str(directory / "index.faiss"))
 
         with open(
             directory / "metadata.json",

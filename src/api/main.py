@@ -57,9 +57,7 @@ def create_generator():
     if generator_type == "mock":
         return MockGenerator()
 
-    raise ValueError(
-        f"Unsupported GENERATOR value: {generator_type}"
-    )
+    raise ValueError(f"Unsupported GENERATOR value: {generator_type}")
 
 
 generator = create_generator()
@@ -108,7 +106,6 @@ def ask(request: AskRequest) -> AskResponse:
             name="rag-ask",
             input={"question": request.question},
         ) as trace:
-
             # -------------------------
             # Retrieval
             # -------------------------
@@ -119,13 +116,9 @@ def ask(request: AskRequest) -> AskResponse:
                 name="retrieval",
                 input={"question": request.question, "top_k": 5},
             ) as retrieval_span:
-
                 results = retriever.search(request.question, k=5)
 
-                articles = [
-                    result["metadata"]["article_number"]
-                    for result in results
-                ]
+                articles = [result["metadata"]["article_number"] for result in results]
 
                 print("ASK RETRIEVAL:")
                 for result in results:
@@ -137,16 +130,11 @@ def ask(request: AskRequest) -> AskResponse:
                 retrieval_span.update(
                     output={
                         "articles": articles,
-                        "scores": [
-                            result.get("score")
-                            for result in results
-                        ],
+                        "scores": [result.get("score") for result in results],
                     }
                 )
 
-            rag_retrieval_latency_seconds.observe(
-                time.perf_counter() - retrieval_start
-            )
+            rag_retrieval_latency_seconds.observe(time.perf_counter() - retrieval_start)
 
             # -------------------------
             # Prompt construction
@@ -171,13 +159,12 @@ def ask(request: AskRequest) -> AskResponse:
                     "user_prompt": user_prompt,
                 },
             ) as generation:
-
-              try:
+                try:
                     answer = generator.generate(
                         SYSTEM_PROMPT,
                         user_prompt,
                     )
-              except RateLimitError as exc:
+                except RateLimitError as exc:
                     rag_errors_total.inc()
                     raise HTTPException(
                         status_code=503,
@@ -188,9 +175,7 @@ def ask(request: AskRequest) -> AskResponse:
 
             answer, detected_pii = redact_pii(answer)
 
-            guardrail_latency_seconds.labels(
-                guardrail="pii"
-            ).observe(
+            guardrail_latency_seconds.labels(guardrail="pii").observe(
                 time.perf_counter() - pii_start
             )
 
@@ -222,9 +207,7 @@ def ask(request: AskRequest) -> AskResponse:
                 output=answer,
             )
 
-            rag_llm_latency_seconds.observe(
-                time.perf_counter() - llm_start
-            )
+            rag_llm_latency_seconds.observe(time.perf_counter() - llm_start)
 
             # -------------------------
             # Final trace output

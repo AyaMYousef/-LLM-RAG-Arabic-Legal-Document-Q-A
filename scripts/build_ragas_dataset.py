@@ -9,18 +9,11 @@ OUTPUT_PATH = Path("data/evaluation/ragas_dataset.json")
 
 
 def main() -> None:
-    questions = json.loads(
-        QUESTIONS_PATH.read_text(encoding="utf-8")
-    )
+    questions = json.loads(QUESTIONS_PATH.read_text(encoding="utf-8"))
 
-    corpus = json.loads(
-        CORPUS_PATH.read_text(encoding="utf-8")
-    )
+    corpus = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
 
-    articles = {
-        item["article_number"]: item
-        for item in corpus
-    }
+    articles = {item["article_number"]: item for item in corpus}
 
     dataset = []
 

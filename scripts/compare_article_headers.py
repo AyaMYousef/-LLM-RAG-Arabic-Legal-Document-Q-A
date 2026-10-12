@@ -97,11 +97,7 @@ def reconstruct_language_lines(
     spans: list[dict],
     language: str,
 ) -> list[dict]:
-    language_spans = [
-        span
-        for span in spans
-        if classify_span(span["text"]) == language
-    ]
+    language_spans = [span for span in spans if classify_span(span["text"]) == language]
 
     groups = group_spans_by_y(language_spans)
 
@@ -120,12 +116,7 @@ def reconstruct_language_lines(
                 key=lambda span: span["x0"],
             )
 
-        text = normalize_spaces(
-            " ".join(
-                span["text"]
-                for span in ordered
-            )
-        )
+        text = normalize_spaces(" ".join(span["text"] for span in ordered))
 
         lines.append(
             {
@@ -215,17 +206,11 @@ def main() -> None:
 
     print("\nMissing from Arabic:")
     for number in sorted(english_numbers - arabic_numbers):
-        print(
-            f"Article {number}: "
-            f"English={english[number]}"
-        )
+        print(f"Article {number}: English={english[number]}")
 
     print("\nMissing from English:")
     for number in sorted(arabic_numbers - english_numbers):
-        print(
-            f"Article {number}: "
-            f"Arabic={arabic[number]}"
-        )
+        print(f"Article {number}: Arabic={arabic[number]}")
 
     print("\nDuplicate Arabic headers:")
     for number, occurrences in sorted(arabic.items()):

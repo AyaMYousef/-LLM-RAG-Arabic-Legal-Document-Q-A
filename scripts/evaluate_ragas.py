@@ -78,11 +78,11 @@ def create_evaluator_llm():
     )
 
     return llm_factory(
-    model=os.environ["LLM_MODEL"],
-    provider="openai",
-    client=client,
-    max_tokens=512,
-)
+        model=os.environ["LLM_MODEL"],
+        provider="openai",
+        client=client,
+        max_tokens=512,
+    )
 
 
 def main() -> None:
@@ -98,14 +98,14 @@ def main() -> None:
     embeddings = E5RagasEmbeddings()
 
     metrics = [
-    Faithfulness(llm=evaluator_llm),
-    ContextPrecision(llm=evaluator_llm),
-    ContextRecall(llm=evaluator_llm),
-    AnswerRelevancy(
-        llm=evaluator_llm,
-        embeddings=embeddings,
-    ),
-]
+        Faithfulness(llm=evaluator_llm),
+        ContextPrecision(llm=evaluator_llm),
+        ContextRecall(llm=evaluator_llm),
+        AnswerRelevancy(
+            llm=evaluator_llm,
+            embeddings=embeddings,
+        ),
+    ]
 
     dataset = EvaluationDataset(samples=samples)
 
@@ -113,8 +113,6 @@ def main() -> None:
     print("Starting RAGAS evaluation...")
     print("Evaluator model:", os.environ["LLM_MODEL"])
     print()
-
-  
 
     result = evaluate(
         dataset=dataset,
@@ -135,19 +133,11 @@ def main() -> None:
     output = {
         "num_samples": len(samples),
         "metrics": {
-        "faithfulness": float(
-            result_df["faithfulness"].mean()
-        ),
-        "context_precision": float(
-            result_df["context_precision"].mean()
-        ),
-        "context_recall": float(
-            result_df["context_recall"].mean()
-        ),
-        "answer_relevancy": float(
-            result_df["answer_relevancy"].mean()
-        ),
-    },
+            "faithfulness": float(result_df["faithfulness"].mean()),
+            "context_precision": float(result_df["context_precision"].mean()),
+            "context_recall": float(result_df["context_recall"].mean()),
+            "answer_relevancy": float(result_df["answer_relevancy"].mean()),
+        },
         "results": result_df.to_dict(orient="records"),
     }
 

@@ -132,11 +132,7 @@ def main() -> None:
             print(f"\n--- PAGE {page_number} ---")
 
             for line in lines:
-                print(
-                    f"[{line['direction']}] "
-                    f"y={line['y']:7.2f} "
-                    f"{line['text']}"
-                )
+                print(f"[{line['direction']}] y={line['y']:7.2f} {line['text']}")
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 

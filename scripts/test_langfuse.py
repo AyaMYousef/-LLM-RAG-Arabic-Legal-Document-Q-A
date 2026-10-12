@@ -10,9 +10,7 @@ with langfuse.start_as_current_observation(
     name="langfuse-connection-test",
     input={"message": "RAG pipeline test"},
 ) as span:
-    span.update(
-        output={"status": "Langfuse tracing works"}
-    )
+    span.update(output={"status": "Langfuse tracing works"})
 
 langfuse.flush()
 

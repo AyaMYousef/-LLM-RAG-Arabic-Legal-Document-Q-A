@@ -41,10 +41,7 @@ MAX_ARTICLE_CHARS = 20_000
 
 def is_repealed(article_number: int) -> bool:
     """Return True if an article belongs to a known repealed range."""
-    return any(
-        article_number in repealed_range
-        for repealed_range in REPEALED_RANGES
-    )
+    return any(article_number in repealed_range for repealed_range in REPEALED_RANGES)
 
 
 def contains_arabic(text: str) -> bool:
@@ -60,9 +57,7 @@ def contains_latin(text: str) -> bool:
 def load_corpus() -> list[dict]:
     """Load the generated corpus JSON."""
     if not INPUT_PATH.exists():
-        raise FileNotFoundError(
-            f"Corpus not found: {INPUT_PATH}"
-        )
+        raise FileNotFoundError(f"Corpus not found: {INPUT_PATH}")
 
     with INPUT_PATH.open(
         "r",
@@ -71,9 +66,7 @@ def load_corpus() -> list[dict]:
         data = json.load(file)
 
     if not isinstance(data, list):
-        raise TypeError(
-            "Corpus root must be a JSON list."
-        )
+        raise TypeError("Corpus root must be a JSON list.")
 
     return data
 
@@ -86,9 +79,7 @@ def validate_schema(
 
     for index, record in enumerate(records):
         if not isinstance(record, dict):
-            errors.append(
-                f"Record {index} is not a JSON object."
-            )
+            errors.append(f"Record {index} is not a JSON object.")
             continue
 
         missing = REQUIRED_FIELDS - set(record)
@@ -101,21 +92,13 @@ def validate_schema(
             )
 
     article_numbers = [
-        record.get("article_number")
-        for record in records
-        if isinstance(record, dict)
+        record.get("article_number") for record in records if isinstance(record, dict)
     ]
 
-    non_integer = [
-        number
-        for number in article_numbers
-        if not isinstance(number, int)
-    ]
+    non_integer = [number for number in article_numbers if not isinstance(number, int)]
 
     if non_integer:
-        errors.append(
-            f"Non-integer article numbers: {non_integer[:20]}"
-        )
+        errors.append(f"Non-integer article numbers: {non_integer[:20]}")
 
     repealed_types = [
         record.get("article_number")
@@ -124,10 +107,7 @@ def validate_schema(
     ]
 
     if repealed_types:
-        errors.append(
-            "Records with non-boolean is_repealed: "
-            f"{repealed_types[:20]}"
-        )
+        errors.append(f"Records with non-boolean is_repealed: {repealed_types[:20]}")
 
 
 def validate_article_coverage(
@@ -139,22 +119,15 @@ def validate_article_coverage(
     article_numbers = [
         record["article_number"]
         for record in records
-        if isinstance(record, dict)
-        and isinstance(record.get("article_number"), int)
+        if isinstance(record, dict) and isinstance(record.get("article_number"), int)
     ]
 
     duplicates = sorted(
-        {
-            number
-            for number in article_numbers
-            if article_numbers.count(number) > 1
-        }
+        {number for number in article_numbers if article_numbers.count(number) > 1}
     )
 
     if duplicates:
-        errors.append(
-            f"Duplicate article numbers: {duplicates}"
-        )
+        errors.append(f"Duplicate article numbers: {duplicates}")
 
     expected = set(
         range(
@@ -169,14 +142,10 @@ def validate_article_coverage(
     unexpected = sorted(actual - expected)
 
     if missing:
-        errors.append(
-            f"Missing article numbers: {missing}"
-        )
+        errors.append(f"Missing article numbers: {missing}")
 
     if unexpected:
-        errors.append(
-            f"Unexpected article numbers: {unexpected}"
-        )
+        errors.append(f"Unexpected article numbers: {unexpected}")
 
 
 def validate_repealed_flags(
@@ -196,9 +165,7 @@ def validate_repealed_flags(
 
         if actual != expected:
             errors.append(
-                f"Article {article_number}: "
-                f"is_repealed={actual}, "
-                f"expected={expected}"
+                f"Article {article_number}: is_repealed={actual}, expected={expected}"
             )
 
 
@@ -230,15 +197,11 @@ def validate_article_text(
         # Arabic source exception
         if article_number in ARABIC_TEXT_EXCEPTIONS:
             warnings.append(
-                f"Article {article_number}: "
-                f"{ARABIC_TEXT_EXCEPTIONS[article_number]}"
+                f"Article {article_number}: {ARABIC_TEXT_EXCEPTIONS[article_number]}"
             )
         else:
             if not isinstance(text_ar, str) or not text_ar.strip():
-                errors.append(
-                    f"Article {article_number}: "
-                    "missing Arabic text"
-                )
+                errors.append(f"Article {article_number}: missing Arabic text")
 
             if isinstance(text_ar, str):
                 if not contains_arabic(text_ar):
@@ -256,10 +219,7 @@ def validate_article_text(
 
         # English text is still required
         if not isinstance(text_en, str) or not text_en.strip():
-            errors.append(
-                f"Article {article_number}: "
-                "missing English text"
-            )
+            errors.append(f"Article {article_number}: missing English text")
 
         if isinstance(text_en, str):
             if not contains_latin(text_en):
@@ -274,6 +234,7 @@ def validate_article_text(
                     f"English text exceeds {MAX_ARTICLE_CHARS} "
                     "characters"
                 )
+
 
 def validate_hierarchy(
     records: list[dict],
@@ -309,8 +270,7 @@ def validate_hierarchy(
 
         if missing:
             warnings.append(
-                f"Article {article_number}: "
-                f"missing hierarchy fields {missing}"
+                f"Article {article_number}: missing hierarchy fields {missing}"
             )
 
 
@@ -334,8 +294,7 @@ def validate_topics(
 
         if not topic_ar and not topic_en:
             warnings.append(
-                f"Article {article_number}: "
-                "missing both topic_ar and topic_en"
+                f"Article {article_number}: missing both topic_ar and topic_en"
             )
 
 
@@ -351,18 +310,12 @@ def validate_citations(
         if not isinstance(article_number, int):
             continue
 
-        expected = (
-            f"Egyptian Civil Code, "
-            f"Article {article_number}"
-        )
+        expected = f"Egyptian Civil Code, Article {article_number}"
 
         actual = record.get("citation")
 
         if actual != expected:
-            errors.append(
-                f"Article {article_number}: "
-                f"invalid citation: {actual!r}"
-            )
+            errors.append(f"Article {article_number}: invalid citation: {actual!r}")
 
 
 def validate_source_pages(
@@ -384,15 +337,13 @@ def validate_source_pages(
 
         if not isinstance(source_page, int):
             errors.append(
-                f"Article {article_number}: "
-                f"invalid source_page: {source_page!r}"
+                f"Article {article_number}: invalid source_page: {source_page!r}"
             )
             continue
 
         if source_page < 1:
             errors.append(
-                f"Article {article_number}: "
-                f"invalid source_page: {source_page}"
+                f"Article {article_number}: invalid source_page: {source_page}"
             )
 
 
@@ -429,16 +380,11 @@ def validate_heading_bleed(
             if not isinstance(value, str):
                 continue
 
-            first_line = value.strip().splitlines()[0] \
-                if value.strip() else ""
+            first_line = value.strip().splitlines()[0] if value.strip() else ""
 
-            if any(
-                pattern.fullmatch(first_line)
-                for pattern in compiled
-            ):
+            if any(pattern.fullmatch(first_line) for pattern in compiled):
                 warnings.append(
-                    f"Article {article_number}: "
-                    f"possible heading bleed in {field}"
+                    f"Article {article_number}: possible heading bleed in {field}"
                 )
 
 
@@ -451,14 +397,11 @@ def validate_random_sample(
     active_records = [
         record
         for record in records
-        if isinstance(record, dict)
-        and not record.get("is_repealed")
+        if isinstance(record, dict) and not record.get("is_repealed")
     ]
 
     if not active_records:
-        warnings.append(
-            "No active articles available for random sampling."
-        )
+        warnings.append("No active articles available for random sampling.")
         return []
 
     sample_size = min(
@@ -473,9 +416,7 @@ def validate_random_sample(
         sample_size,
     )
 
-    sample.sort(
-        key=lambda record: record["article_number"]
-    )
+    sample.sort(key=lambda record: record["article_number"])
 
     results = []
 
@@ -483,13 +424,9 @@ def validate_random_sample(
         article_number = record["article_number"]
         source_page = record.get("source_page")
 
-        ar_length = len(
-            record.get("text_ar", "")
-        )
+        ar_length = len(record.get("text_ar", ""))
 
-        en_length = len(
-            record.get("text_en", "")
-        )
+        en_length = len(record.get("text_en", ""))
 
         results.append(
             f"Article {article_number} "
@@ -524,9 +461,7 @@ def build_report(
 
     lines.append("EXPECTED SCHEMA")
     lines.append("-" * 80)
-    lines.append(
-        ", ".join(sorted(REQUIRED_FIELDS))
-    )
+    lines.append(", ".join(sorted(REQUIRED_FIELDS)))
     lines.append("")
 
     lines.append("REPEALED RANGES")
@@ -549,10 +484,7 @@ def build_report(
     lines.append("-" * 80)
 
     if errors:
-        lines.extend(
-            f"[ERROR] {error}"
-            for error in errors
-        )
+        lines.extend(f"[ERROR] {error}" for error in errors)
     else:
         lines.append("None")
 
@@ -562,10 +494,7 @@ def build_report(
     lines.append("-" * 80)
 
     if warnings:
-        lines.extend(
-            f"[WARNING] {warning}"
-            for warning in warnings
-        )
+        lines.extend(f"[WARNING] {warning}" for warning in warnings)
     else:
         lines.append("None")
 

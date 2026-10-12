@@ -23,8 +23,7 @@ def validate_output(
 
     # The answer should contain an article reference.
     has_article_reference = any(
-        re.search(pattern, answer)
-        for pattern in ARTICLE_PATTERNS
+        re.search(pattern, answer) for pattern in ARTICLE_PATTERNS
     )
 
     if not has_article_reference:
@@ -36,8 +35,7 @@ def validate_output(
     # Make sure at least one retrieved article is referenced.
     if retrieved_articles:
         referenced_article = any(
-            str(article) in answer
-            for article in retrieved_articles
+            str(article) in answer for article in retrieved_articles
         )
 
         if not referenced_article:

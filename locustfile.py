@@ -19,9 +19,7 @@ class RAGUser(HttpUser):
             catch_response=True,
         ) as response:
             if response.status_code != 200:
-                response.failure(
-                    f"Unexpected status code: {response.status_code}"
-                )
+                response.failure(f"Unexpected status code: {response.status_code}")
                 return
 
             try:

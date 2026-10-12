@@ -2,20 +2,14 @@ import re
 
 # Egyptian mobile numbers:
 # 010xxxxxxxx, 011xxxxxxxx, 012xxxxxxxx, 015xxxxxxxx
-EGYPTIAN_PHONE_PATTERN = re.compile(
-    r"\b01[0125]\d{8}\b"
-)
+EGYPTIAN_PHONE_PATTERN = re.compile(r"\b01[0125]\d{8}\b")
 
 # Egyptian national ID:
 # 14 consecutive digits.
-EGYPTIAN_NATIONAL_ID_PATTERN = re.compile(
-    r"\b\d{14}\b"
-)
+EGYPTIAN_NATIONAL_ID_PATTERN = re.compile(r"\b\d{14}\b")
 
 # Email addresses.
-EMAIL_PATTERN = re.compile(
-    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
-)
+EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 
 
 def redact_pii(text: str) -> tuple[str, list[str]]:

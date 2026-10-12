@@ -10,9 +10,7 @@ OUTPUT_PATH = Path("data/evaluation/ragas_inputs.json")
 
 
 def main() -> None:
-    dataset = json.loads(
-        INPUT_PATH.read_text(encoding="utf-8")
-    )
+    dataset = json.loads(INPUT_PATH.read_text(encoding="utf-8"))
 
     retriever = Retriever()
 
@@ -43,10 +41,7 @@ def main() -> None:
             }
         )
 
-        print(
-            f"[{i:02d}/{len(dataset)}] "
-            f"Article {item['expected_article']}"
-        )
+        print(f"[{i:02d}/{len(dataset)}] Article {item['expected_article']}")
 
     OUTPUT_PATH.write_text(
         json.dumps(
