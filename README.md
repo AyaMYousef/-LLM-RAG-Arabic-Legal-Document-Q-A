@@ -674,8 +674,6 @@ Retrieved Legal Text
 LLM-Ready Context
 ```
 
-The LLM generation layer has intentionally not yet been added. The next stage is to build the prompt layer and connect an LLM that generates a grounded answer with article-level sources.
-
 
 ## Vector Index and Reproducibility
 
