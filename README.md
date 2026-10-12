@@ -2309,6 +2309,66 @@ Each `/ask` trace in the Langfuse dashboard shows the RAGAS faithfulness score a
 
 ---
 
+## Faithfulness Alert
+
+`scripts/faithfulness_alert.py` checks the RAGAS faithfulness score after every evaluation and triggers an alert if it drops below **0.80**.
+
+### Alert channels (no external setup needed)
+
+| Channel | What happens |
+| --- | --- |
+| Terminal | Prints a visible `WARNING` block |
+| File | Appends a timestamped entry to `reports/alerts.log` |
+| Desktop | Windows/macOS/Linux toast popup (requires `pip install plyer`) |
+
+### Run manually
+
+```powershell
+.venv\Scripts\python.exe scripts\faithfulness_alert.py
+```
+
+Expected output when score is healthy (current baseline = 1.0):
+
+```text
+[alert] ✅  Faithfulness OK: 1.0000 (threshold 0.8)
+```
+
+Output when threshold is breached:
+
+```text
+============================================================
+WARNING: RAGAS FAITHFULNESS BELOW THRESHOLD
+============================================================
+FAITHFULNESS ALERT — 2026-10-12 14:00:00
+  Score     : 0.7200
+  Threshold : 0.80
+  Drop      : 0.0800
+  Action    : Review recent changes to chunking, retrieval, or generation config.
+============================================================
+
+[alert] Alert written to reports/alerts.log
+```
+
+### Custom threshold or results file
+
+```powershell
+.venv\Scripts\python.exe scripts\faithfulness_alert.py --threshold 0.75
+.venv\Scripts\python.exe scripts\faithfulness_alert.py --results data/evaluation/ragas_results.json
+```
+
+### Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Faithfulness ≥ threshold — OK |
+| `1` | Faithfulness < threshold — alert triggered, CI step fails |
+
+### Wired into the pipeline
+
+The alert runs automatically at the end of `scripts/log_ragas_mlflow.py` and as a step in the `ragas-quality-gate` CI job, so any score drop blocks the Docker image push.
+
+---
+
 ## CI Quality Gate
 
 The GitHub Actions workflow (`.github/workflows/ci.yml`) includes a `ragas-quality-gate` job that runs after the test suite. It reads `data/evaluation/ragas_results.json` and exits with code 1 if faithfulness < 0.75. The `docker` job depends on both `test` and `ragas-quality-gate`, so a failing gate blocks the image push.

@@ -41,10 +41,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # The quality gate reads the committed ragas_results.json.
-      # A full live re-run requires LLM_API_KEY / OPENAI_API_KEY and a
-      # running API server, so it is intentionally skipped here.
-      # To re-run evaluations locally: python scripts/evaluate_ragas.py
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+
+      # Reads committed ragas_results.json — no live LLM call needed.
+      # faithfulness_alert.py exits 1 when score < 0.80, failing this job.
+      # The 0.75 hard gate also runs as a safety net.
+      - name: Faithfulness alert (>= 0.80)
+        run: uv run python scripts/faithfulness_alert.py --threshold 0.80
+
       - name: Faithfulness quality gate (>= 0.75)
         run: |
           python -c "
