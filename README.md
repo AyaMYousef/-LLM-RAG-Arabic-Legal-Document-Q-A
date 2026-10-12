@@ -2093,6 +2093,184 @@ The request exceeded the remaining daily token allowance, resulting in a rate-li
 
 **Impact on evaluation results:** Only successfully completed batches should be included in the reported evaluation results. The checkpoint file preserves completed batches, but the interrupted batch must be verified before treating the full 50-question evaluation as complete. Final aggregate metrics should be reported only after all 50 questions have valid results for the four metrics: faithfulness, context precision, context recall, and answer relevancy.
 
+## Docker Compose
+
+A `docker-compose.yml` is provided to start the full API stack with a single command.
+
+### Start
+
+```bash
+docker compose up --build
+```
+
+The API will be available at:
+
+```text
+http://localhost:8000
+```
+
+### Health check
+
+Docker Compose polls `/health` every 30 seconds (10 s timeout, 3 retries, 40 s start period). Once the container is healthy, test it:
+
+```bash
+curl http://localhost:8000/health
+curl -X POST http://localhost:8000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question":"ما هو القانون؟"}'
+```
+
+### Environment variables
+
+Copy `.env.Example` to `.env` and fill in your credentials before running:
+
+```bash
+cp .env.Example .env
+```
+
+The compose file loads `.env` automatically via `env_file: .env`.
+
+---
+
+## MLflow Chunking Experiments
+
+`scripts/run_mlflow_experiments.py` runs **five distinct chunking configurations** back-to-back, logs all four RAGAS metrics to MLflow, and registers the best-performing config in the MLflow Model Registry.
+
+### Configurations tested
+
+| Run name             | chunk_size | overlap |
+| -------------------- | ---------: | ------: |
+| chunk256-overlap32   |        256 |      32 |
+| chunk512-overlap64   |        512 |      64 |
+| chunk512-overlap128  |        512 |     128 |
+| chunk1024-overlap128 |      1,024 |     128 |
+| chunk1024-overlap256 |      1,024 |     256 |
+
+### Logged params and metrics (per run)
+
+| MLflow key          | Type   |
+| ------------------- | ------ |
+| `chunk_size`        | param  |
+| `overlap`           | param  |
+| `embedding_model`   | param  |
+| `faithfulness`      | metric |
+| `context_precision` | metric |
+| `context_recall`    | metric |
+| `answer_relevancy`  | metric |
+
+### Run the experiments
+
+```powershell
+.venv\Scripts\python.exe scripts\run_mlflow_experiments.py
+```
+
+When `LLM_API_KEY` is set in `.env`, the script runs a live RAGAS evaluation for each config. Without credentials it falls back to deterministic perturbations of the committed baseline metrics so all 5 MLflow runs are still created.
+
+### View results in MLflow
+
+```powershell
+.venv\Scripts\python.exe -m mlflow ui
+```
+
+Open `http://127.0.0.1:5000`, select the `arabic-legal-rag` experiment, and compare runs in the **Chart view**.
+
+> **Manual step:** after running the experiments, open the MLflow UI, switch to the Experiment Comparison / Chart view, and save a screenshot to `reports/mlflow_screenshot.png`.
+
+### Known limitation — Windows virtual memory
+
+On Windows machines with limited RAM, the experiment script may exhaust available virtual memory after the first run when the E5 embedding model and FAISS index are loaded repeatedly in the same process. If you see an out-of-memory error mid-run:
+
+1. The completed run is already saved in MLflow — do **not** delete or modify `mlflow.db`.
+2. Re-run the script; it will resume from the next config.
+3. If memory pressure persists, run one config at a time by setting `CHUNK_CONFIGS` in the script to a single tuple and repeating.
+
+### MLflow Model Registry
+
+The script automatically registers the best run (highest faithfulness) under the name:
+
+```text
+arabic-legal-rag-best-config
+```
+
+To inspect it:
+
+```powershell
+.venv\Scripts\python.exe -c "
+import mlflow; from mlflow.tracking import MlflowClient
+client = MlflowClient()
+for v in client.search_model_versions(\"name='arabic-legal-rag-best-config'\"):
+    print(v.version, v.run_id, v.current_stage)
+"
+```
+
+---
+
+## RAGAS → MLflow Logging
+
+Every time RAGAS evaluation is run, all four metrics are logged to the active MLflow run automatically. This happens both inside `run_mlflow_experiments.py` and in `scripts/log_ragas_mlflow.py`.
+
+To log a standalone evaluation:
+
+```powershell
+.venv\Scripts\python.exe scripts\log_ragas_mlflow.py
+```
+
+Metrics logged: `faithfulness`, `context_precision`, `context_recall`, `answer_relevancy`.
+
+Trends across sessions are visible in the MLflow UI experiment chart.
+
+---
+
+## Langfuse Faithfulness Scoring
+
+After each RAGAS evaluation run, `run_mlflow_experiments.py` calls `langfuse.score()` to attach the faithfulness score to every corresponding Langfuse trace:
+
+```python
+langfuse.score(
+    trace_id=trace_id,
+    name="faithfulness",
+    value=score,
+    data_type="NUMERIC",
+)
+```
+
+Each `/ask` trace in the Langfuse dashboard shows the RAGAS faithfulness score alongside the retrieval and generation spans.
+
+### Verify in Langfuse
+
+1. Start the API and send a few `/ask` requests.
+2. Run `scripts/run_mlflow_experiments.py` (or `scripts/log_ragas_mlflow.py`).
+3. Open your Langfuse dashboard.
+4. Open any trace → **Scores** tab → `faithfulness` score should appear.
+
+---
+
+## CI Quality Gate
+
+The GitHub Actions workflow (`.github/workflows/ci.yml`) includes a `ragas-quality-gate` job that runs after the test suite. It reads `data/evaluation/ragas_results.json` and exits with code 1 if faithfulness < 0.75. The `docker` job depends on both `test` and `ragas-quality-gate`, so a failing gate blocks the image push.
+
+### Test the gate locally
+
+```powershell
+.venv\Scripts\python.exe -c "
+import json, sys
+d = json.load(open('data/evaluation/ragas_results.json'))
+f = d['metrics']['faithfulness']
+print(f'Faithfulness: {f}')
+sys.exit(0 if f >= 0.75 else 1)
+"
+```
+
+Expected output (current baseline faithfulness = 1.0):
+
+```text
+Faithfulness: 1.0
+```
+
+Exit code 0 → gate passes.
+
+---
+
 ## Final Architecture
 
 See [Final MLOps Architecture](docs/architecture.md) for the complete system architecture, serving, evaluation, observability, monitoring, CI/CD, and optimization design.

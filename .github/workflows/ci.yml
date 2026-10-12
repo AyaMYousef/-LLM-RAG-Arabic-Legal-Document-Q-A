@@ -33,9 +33,31 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
-  docker:
+  ragas-quality-gate:
     runs-on: ubuntu-latest
     needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # The quality gate reads the committed ragas_results.json.
+      # A full live re-run requires LLM_API_KEY / OPENAI_API_KEY and a
+      # running API server, so it is intentionally skipped here.
+      # To re-run evaluations locally: python scripts/evaluate_ragas.py
+      - name: Faithfulness quality gate (>= 0.75)
+        run: |
+          python -c "
+          import json, sys
+          d = json.load(open('data/evaluation/ragas_results.json'))
+          f = d['metrics']['faithfulness']
+          print(f'Faithfulness: {f}')
+          sys.exit(0 if f >= 0.75 else 1)
+          "
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [test, ragas-quality-gate]
 
     permissions:
       contents: read
