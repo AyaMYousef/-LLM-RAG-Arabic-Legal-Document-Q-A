@@ -42,8 +42,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.ingestion.chunker import build_chunks          # noqa: E402
-from src.ingestion.vector_store import FAISSVectorStore  # noqa: E402
+from src.ingestion.chunker import build_chunks
+from src.ingestion.vector_store import FAISSVectorStore
 
 EMBEDDING_MODEL = "intfloat/multilingual-e5-base"
 VECTOR_STORE_DIR = PROJECT_ROOT / "data" / "processed" / "vector_store_e5"

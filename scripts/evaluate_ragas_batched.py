@@ -5,6 +5,11 @@ import time
 from pathlib import Path
 
 import pandas as pd
+from evaluate_ragas import (
+    E5RagasEmbeddings,
+    create_evaluator_llm,
+    load_samples,
+)
 from ragas import evaluate
 from ragas.dataset_schema import EvaluationDataset
 from ragas.metrics import (
@@ -12,12 +17,6 @@ from ragas.metrics import (
     ContextPrecision,
     ContextRecall,
     Faithfulness,
-)
-
-from evaluate_ragas import (
-    E5RagasEmbeddings,
-    create_evaluator_llm,
-    load_samples,
 )
 
 BATCH_SIZE = 5

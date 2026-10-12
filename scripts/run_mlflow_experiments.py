@@ -36,8 +36,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 load_dotenv(PROJECT_ROOT / ".env")
 
-import mlflow  # noqa: E402
-from mlflow.tracking import MlflowClient  # noqa: E402
+import mlflow
+from mlflow.tracking import MlflowClient
 
 # ── paths ──────────────────────────────────────────────────────────────────
 CORPUS_PATH = PROJECT_ROOT / "data" / "processed" / "corpus_raw.json"
