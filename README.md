@@ -964,31 +964,7 @@ The original retrieval evaluation produced:
 | Recall@5 | 0.9000 |
 | MRR      | 0.8042 |
 
-### Known Retrieval Issue
 
-During API testing, a discrepancy was identified between the expected standalone retrieval results and the results returned through the running `/ask` endpoint.
-
-For example, the question:
-
-```text
-ماذا يحدث إذا لم يوجد نص تشريعي يمكن تطبيقه؟
-```
-
-should retrieve **Article 1**, which states the applicable order of legal sources when no applicable legislative provision exists.
-
-The standalone retrieval previously returned Article 1 among the highest-ranked results, while the running API returned unrelated articles.
-
-The following items have already been verified:
-
-* the API is running from the project root
-* the configured vector-store path resolves to `data/processed/vector_store_e5`
-* the vector store exists
-* the index contains 1,149 records
-* the retriever explicitly uses `intfloat/multilingual-e5-base`
-
-The exact cause of the API/standalone retrieval discrepancy is still under investigation.
-
-**This issue does not block the next MLOps stages.** It will be fixed before the final retrieval/RAGAS comparison, and the evaluation will be rerun after the fix.
 
 ### Current Project Strategy
 
