@@ -1,4 +1,3 @@
-```python
 """
 Faithfulness alert script for the Arabic Legal RAG pipeline.
 
@@ -129,4 +128,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-```
+
