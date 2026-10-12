@@ -2070,7 +2070,7 @@ GitHub Push / Pull Request
 - Configure required API credentials through GitHub Actions Secrets
 - Add deployment automation
 
-Docker image publishing and deployment are **not yet part of the GitHub Actions workflow**.
+
 
 ### Limitations
 
