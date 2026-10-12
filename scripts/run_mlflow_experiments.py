@@ -196,7 +196,8 @@ def run_live_ragas_eval(
 
         try:
             answer = generator.generate(SYSTEM_PROMPT, user_prompt)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
+            print(f"  [generator] Generation failed: {exc}")
             answer = "لا تتوفر إجابة."
 
         samples.append(
