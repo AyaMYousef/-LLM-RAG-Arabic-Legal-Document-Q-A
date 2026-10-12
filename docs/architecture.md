@@ -862,44 +862,4 @@ vLLM, AWQ, streaming, guardrails, and load testing can be introduced without red
 
 
 
-## 18. Architecture Status
 
-### Implemented
-
-- Bilingual legal PDF extraction
-- Structured article-level corpus
-- DVC pipeline
-- Article-level chunking
-- E5 embeddings
-- FAISS retrieval
-- FastAPI API
-- Grounded RAG generation
-- RAGAS evaluation
-- MLflow tracking
-- Langfuse tracing
-- Prometheus metrics
-- Grafana monitoring
-- BentoML serving
-- Docker containerization
-- GitHub Actions CI
-- GHCR container publishing
-
-### Optimization / Remaining Work
-
-- CI RAGAS quality gate
-- Reproducible index rebuild inside CI
-- 50-user Locust evaluation
-- Batch re-indexing validation
-- Canary deployment documentation
-- Extended RAGAS evaluation
-- RAGAS-to-MLflow trend tracking
-- Alerting
-- Embedding drift monitoring
-- Token/cost monitoring
-- Guardrails
-- vLLM serving
-- AWQ 4-bit quantization
-- Original vs quantized evaluation
-- Latency comparison
-
-The architecture is intentionally modular so these remaining components can be added without changing the fundamental data, retrieval, or legal-grounding design.
