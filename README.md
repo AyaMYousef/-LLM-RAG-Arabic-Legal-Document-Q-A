@@ -786,7 +786,7 @@ Context Builder
 Article Sources
 ```
 
-The current API focuses on **retrieval and source grounding**. LLM generation is intentionally not connected yet.
+The current API focuses on **retrieval and source grounding**.
 
 ### Start the API
 
