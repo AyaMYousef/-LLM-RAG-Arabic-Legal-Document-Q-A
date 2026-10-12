@@ -2093,6 +2093,70 @@ The request exceeded the remaining daily token allowance, resulting in a rate-li
 
 **Impact on evaluation results:** Only successfully completed batches should be included in the reported evaluation results. The checkpoint file preserves completed batches, but the interrupted batch must be verified before treating the full 50-question evaluation as complete. Final aggregate metrics should be reported only after all 50 questions have valid results for the four metrics: faithfulness, context precision, context recall, and answer relevancy.
 
+## Batch Re-indexing
+
+`scripts/batch_reindex.py` adds new articles to the existing FAISS vector store **without rebuilding it from scratch**.
+
+### What it does
+
+1. Loads new article(s) from a JSON file (or a built-in demo article)
+2. Converts them into chunks using the same `build_chunks()` function as the main pipeline
+3. Embeds with `intfloat/multilingual-e5-base`
+4. Loads the existing index from `data/processed/vector_store_e5/`
+5. Appends the new vectors and metadata
+6. Saves the updated index back to the same directory
+
+### Run with a demo article (quick test)
+
+```powershell
+.venv\Scripts\python.exe scripts\batch_reindex.py --demo
+```
+
+Expected output:
+
+```text
+Demo mode: adding 1 demo article.
+Built 1 chunk(s).
+Embedding with intfloat/multilingual-e5-base ...
+Loading existing index from data/processed/vector_store_e5 ...
+Index currently contains 1149 vectors.
+Added 1 vector(s). Index now has 1150 vectors.
+Index saved to data/processed/vector_store_e5
+
+── Batch re-index complete ──
+  Articles added : 1
+  Vectors before : 1149
+  Vectors after  : 1150
+```
+
+### Add articles from a JSON file
+
+```powershell
+.venv\Scripts\python.exe scripts\batch_reindex.py --input data/raw/new_articles.json
+```
+
+The input JSON must follow the same schema as `corpus_raw.json`:
+
+```json
+[
+  {
+    "article_number": 1200,
+    "citation": "Egyptian Civil Code, Article 1200",
+    "source_page": 171,
+    "is_repealed": false,
+    "text_ar": "...",
+    "text_en": "...",
+    "book": null,
+    "chapter": null,
+    "section": "New Section",
+    "topic_ar": "...",
+    "topic_en": "..."
+  }
+]
+```
+
+---
+
 ## Docker Compose
 
 A `docker-compose.yml` is provided to start the full API stack with a single command.
