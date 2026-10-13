@@ -328,7 +328,7 @@ def score_langfuse_traces(
             f"  [langfuse] Scored {len(per_question_faithfulness)} "
             "traces with faithfulness."
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"  [langfuse] Skipped trace scoring: {exc}")
 
 
@@ -369,7 +369,7 @@ def main() -> None:
             try:
                 metrics = run_live_ragas_eval(chunk_size, overlap)
                 per_q_faith: list[float] = [metrics["faithfulness"]] * NUM_EVAL_SAMPLES
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 print(
                     f"  [ragas] Live eval failed ({exc}); falling back to simulated metrics."
                 )
