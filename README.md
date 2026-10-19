@@ -1503,7 +1503,7 @@ Service Architecture
 This separation allows the same RAG logic to be exposed through the original FastAPI application and packaged as a BentoML service.
 
 Installation
-
+```text
 BentoML was installed with:
 
 uv add bentoml
@@ -1539,7 +1539,7 @@ A successful response returns:
 
 StatusCode : 200
 StatusDescription : OK
-
+```
 This confirms that the BentoML service has initialized successfully.
 
 
