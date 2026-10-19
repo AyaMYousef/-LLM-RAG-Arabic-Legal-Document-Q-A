@@ -619,15 +619,15 @@ GitHub Actions
         ↓
 Install dependencies
         ↓
-Ruff
+      Ruff
         ↓
-Pytest
+      Pytest
         ↓
-Docker Build
+   Docker Build
         ↓
-Docker Push
+   Docker Push
         ↓
-GHCR
+       GHCR
 ```
 
 The container registry provides a deployable version of the application image.
