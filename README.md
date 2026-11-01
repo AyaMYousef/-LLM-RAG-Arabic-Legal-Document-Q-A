@@ -450,6 +450,93 @@ MRR:
 
 The retrieval benchmark is maintained as a reproducible evaluation step and can be reused when testing chunking strategies, embedding models, reranking, prompts, or other RAG components.
 
+---
+
+## Expanded Retrieval Evaluation — Sliced Metrics & Hybrid Retrieval
+
+Following expert feedback, the evaluation benchmark was expanded from 20 Arabic-only queries to **32 queries** covering four slices:
+
+| Slice | Queries |
+| --- | ---: |
+| Arabic / Semantic | 20 |
+| Arabic / Article-number lookup | 3 |
+| English / Semantic | 7 |
+| English / Article-number lookup | 2 |
+| **Total** | **32** |
+
+This makes gaps that aggregate metrics hide visible at the slice level.
+
+> **Note on metric separation:** All metrics in this section cover **retrieval only** (dense or hybrid vector search). Generation quality metrics — faithfulness, answer relevancy, citation accuracy — are evaluated separately via `scripts/evaluate_ragas.py` and logged to MLflow. Keeping them separate allows each sub-system to be debugged and improved independently.
+
+---
+
+### Dense vs. Hybrid — Overall Comparison
+
+| Metric | Dense (E5 + FAISS) | Hybrid (E5 + BM25) | Δ |
+| --- | ---: | ---: | ---: |
+| **Recall@1** | 0.8125 | 0.7812 | −0.033 |
+| **Recall@3** | 0.8750 | **0.9062** | +0.031 |
+| **Recall@5** | 0.9062 | 0.9062 | = |
+| **MRR** | **0.8500** | 0.8438 | −0.006 |
+
+Hybrid retrieval trades a small drop in Recall@1 for a gain in Recall@3, suggesting BM25 helps surface the correct article slightly deeper in the candidate list for some queries.
+
+---
+
+### Sliced Results — By Query Language
+
+| Language | Retriever | Recall@1 | Recall@3 | Recall@5 | MRR |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Arabic | Dense | 0.8261 | 0.9130 | 0.9565 | 0.8783 |
+| Arabic | Hybrid | 0.8261 | **0.9565** | **0.9565** | **0.8913** |
+| English | Dense | **0.7778** | **0.7778** | **0.7778** | **0.7778** |
+| English | Hybrid | 0.6667 | 0.7778 | 0.7778 | 0.7222 |
+
+**Key finding:** Hybrid retrieval improves Arabic queries (Recall@3 +0.044, MRR +0.013) but slightly hurts English queries (Recall@1 −0.111, MRR −0.056). This suggests BM25 term weighting over Arabic text is effective while English article-number queries need further tuning.
+
+---
+
+### Sliced Results — By Language × Query Type
+
+| Slice | Retriever | Recall@1 | Recall@3 | Recall@5 | MRR |
+| --- | --- | ---: | ---: | ---: | ---: |
+| AR / semantic | Dense | 0.8000 | 0.9000 | 0.9500 | 0.8600 |
+| AR / semantic | Hybrid | 0.8000 | **0.9500** | **0.9500** | **0.8750** |
+| AR / article-number lookup | Dense | **1.0000** | **1.0000** | **1.0000** | **1.0000** |
+| AR / article-number lookup | Hybrid | **1.0000** | **1.0000** | **1.0000** | **1.0000** |
+| EN / semantic | Dense | **0.8571** | **0.8571** | **0.8571** | **0.8571** |
+| EN / semantic | Hybrid | 0.7143 | 0.8571 | 0.8571 | 0.7857 |
+| EN / article-number lookup | Dense | 0.5000 | 0.5000 | 0.5000 | 0.5000 |
+| EN / article-number lookup | Hybrid | 0.5000 | 0.5000 | 0.5000 | 0.5000 |
+
+---
+
+### Failure Analysis — The Missed Queries
+
+Both retrievers produced **3 failures** (RR = 0, not retrieved in top 5). The failures are identical across dense and hybrid, revealing the root cause is not the retriever type but the **chunk representation and cross-language gap**:
+
+| # | Query | Lang | Type | Expected | Retrieved (top 5) | Root Cause |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `ما هو الرهن الرسمي؟` | AR | Semantic | 1030 | 1096, 1098, 1033, 1109, 1110 | **Semantic gap** — the query phrase "رهن رسمي" matches neighbouring pledge articles but not Article 1030 itself. Article 1030's text may not use this exact phrase in the indexed chunk. |
+| 2 | `What does it mean that the contract is the law of the parties?` | EN | Semantic | 147 | 138, 152, 418, 505, 646 | **Cross-language gap** — Article 147's defining phrase "العقد شريعة المتعاقدين" exists only in Arabic in the corpus; an English semantic query cannot bridge the language boundary without a richer bilingual chunk or cross-lingual re-ranking. |
+| 3 | `Article 147 Egyptian Civil Code contract` | EN | Article-number lookup | 147 | 148, 748, 74, 645, 677 | **Number collision** — the token "147" also appears in Article 148's text and elsewhere; BM25 and dense retrieval both retrieve 148 first. A dedicated article-number lookup field or a hybrid re-ranking step is needed. |
+
+Failure log is saved to `reports/retrieval_failures.json` on every evaluation run, enabling failure tracking over time to measure whether each improvement actually helps.
+
+---
+
+### Next Targeted Improvements
+
+Based on the failure analysis above:
+
+1. **Article 1030** — Inspect `text_ar` for Article 1030 in the corpus; if the phrase "رهن رسمي" is absent, enrich the chunk with the article title or add query expansion.
+2. **Article 147 (EN)** — Append the English translation of the famous phrase *"the contract is the law of the parties"* explicitly to Article 147's chunk text so that English semantic queries can match it.
+3. **EN article-number lookup** — Evaluate a dedicated BM25 alpha per language pair, or add a structured article-number field to the metadata for exact-match lookup.
+
+These improvements will be re-evaluated against the same 32-query benchmark to measure progress.
+
+---
+
 ## Retrieval and Context Preparation
 
 After corpus extraction and validation, the legal articles are indexed for semantic retrieval.
