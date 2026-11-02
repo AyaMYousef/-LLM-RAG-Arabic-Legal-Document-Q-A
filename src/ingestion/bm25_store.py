@@ -28,7 +28,6 @@ from rank_bm25 import BM25Okapi
 
 from src.ingestion.vector_store import FAISSVectorStore
 
-
 # ---------------------------------------------------------------------------
 # Simple bilingual tokeniser
 # ---------------------------------------------------------------------------
@@ -188,12 +187,12 @@ class BM25Store:
         print(f"BM25 index saved → {directory}")
 
     @classmethod
-    def load(cls, directory: str | Path) -> "BM25Store":
+    def load(cls, directory: str | Path) -> BM25Store:
         """Load a previously saved BM25Store from *directory*."""
         directory = Path(directory)
 
         with open(directory / cls._INDEX_FILE, "rb") as fh:
-            bm25_obj = pickle.load(fh)  # noqa: S301
+            bm25_obj = pickle.load(fh)
 
         with open(directory / cls._CORPUS_FILE, encoding="utf-8") as fh:
             data = json.load(fh)
