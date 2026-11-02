@@ -7,7 +7,7 @@ name = "arabic-legal-rag"
 version = "0.1.0"
 description = "Arabic Legal Document Q&A RAG Pipeline over the Egyptian Civil Code"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
     { name = "Aya" }
