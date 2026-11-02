@@ -20,7 +20,7 @@ import argparse
 import json
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -63,7 +63,7 @@ def check_faithfulness(results_file: Path, threshold: float) -> int:
         data = json.load(f)
 
     faithfulness = data["metrics"]["faithfulness"]
-    timestamp = datetime.now(timezone.utc).strftime(
+    timestamp = datetime.now(UTC).strftime(
         "%Y-%m-%d %H:%M:%S UTC"
     )
 

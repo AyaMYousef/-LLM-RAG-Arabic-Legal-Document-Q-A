@@ -19,7 +19,7 @@ import argparse
 import json
 import sys
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -478,7 +478,7 @@ def run_evaluation(
         print("\n  All queries succeeded at k=5.")
 
     # ── SAVE REPORTS ───────────────────────────────────────────────────────
-    run_ts = datetime.now(timezone.utc).isoformat()
+    run_ts = datetime.now(UTC).isoformat()
 
     failures_path.parent.mkdir(parents=True, exist_ok=True)
 
